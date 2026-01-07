@@ -1,0 +1,2 @@
+Date,Source_Dir,Method,Instance,N,K,BKS,Best_Cost,Avg_Cost,Gap(%),Avg_Time(s),Runs
+2026-01-04 12:12,X,V2_New_HybridLNS,X-n106-k14,106,14,26362,28414,28718.0,7.78,6635.33,10
