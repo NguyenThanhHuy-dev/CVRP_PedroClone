@@ -1,6 +1,6 @@
 from typing import Union   
 
-from classes.instance import Instance
+from src.common.instance import Instance
 
 class Route:
     ''' Class for the route '''

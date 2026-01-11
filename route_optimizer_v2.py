@@ -24,8 +24,8 @@ import re
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from classes.instance import Instance
-    from classes.clarke_wright import ClarkeWright
+    from src.common.instance import Instance
+    from src.algorithms.heuristics import ClarkeWright
 except ImportError:
     print("Lỗi: Không tìm thấy thư mục 'classes' hoặc module Instance.")
     sys.exit(1)

@@ -1,0 +1,19 @@
+# Cấu hình chung cho việc chạy thực nghiệm
+experiment:
+  runs: 1
+  output_dir: "results"
+
+algorithm:
+  # Bật/Tắt MaxSAT cho cả 2 thuật toán
+  use_maxsat: true
+  
+  # --- Tham số cho V1 (Solver Cũ) ---
+  v1_restarts: 5        # Số lần khởi động lại (Multi-start)
+  v1_ils_time: 60       # Thời gian chạy ILS mỗi lần restart (giây)
+
+  # --- Tham số cho V2 (Solver Mới) ---
+  ils_iterations: 10    # Số vòng lặp LNS
+  gls_time_limit: 20    # Thời gian chạy GLS (giây)
+
+maxsat:
+  timeout: 60           # Timeout tổng cho phần MaxSAT

@@ -1599,8 +1599,8 @@ def solve_with_clarke_wright_and_optimize(filepath: str, verbose: bool = True):
     Added 'verbose' parameter to suppress output during benchmarking.
     """
     import re
-    from classes.instance import Instance
-    from classes.clarke_wright import ClarkeWright
+    from src.common.instance import Instance
+    from src.algorithms.heuristics import ClarkeWright
     from classes.two_opt import TwoOpt
     
     if verbose:

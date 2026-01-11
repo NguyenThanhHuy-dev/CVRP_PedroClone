@@ -2,7 +2,7 @@ import numpy as np
 
 from networkx import Graph, minimum_spanning_tree
 
-from classes.instance import Instance
+from src.common.instance import Instance
 from classes.route import Route
 from classes.utils import Utils
 
