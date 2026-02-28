@@ -1562,32 +1562,42 @@ def optimize_all_routes(routes, distances, demands, capacity):
     
     # Duyệt qua từng tuyến xe (route)
     for v, r in routes.items():
-        # [CRITICAL FIX] Ngưỡng an toàn tuyệt đối là 11 điểm.
-        # Lý do: Với bộ giải PySAT thuần Python, các bài toán TSP > 11 điểm 
-        # có thể gây bùng nổ tổ hợp và treo máy hàng tiếng đồng hồ.
-        # Chiến lược: "Thà bỏ sót còn hơn giết nhầm" - Chỉ tối ưu các route ngắn.
+        # 1. Bỏ qua tuyến quá dài (để tránh treo máy do MaxSAT)
         if len(r) > 11: 
             opt_routes[v] = r
             total += calculate_route_cost(r, distances)
-            # In dấu chấm than (!) để báo hiệu cho người dùng biết tuyến này đã bị BỎ QUA
             print("!", end="", flush=True) 
             continue
+        
+        # 2. [FIX QUAN TRỌNG] Bỏ qua tuyến quá ngắn (0 hoặc 1 khách)
+        # Tuyến 1 khách luôn là tối ưu (Depot -> Khách -> Depot), không cần chạy SAT
+        if len(r) <= 1:
+            opt_routes[v] = r
+            total += calculate_route_cost(r, distances)
+            # In dấu "-" để báo hiệu là skip do quá ngắn
+            print("-", end="", flush=True)
+            continue
+
+        print(".", end="", flush=True)
+        
+        # 3. [DEBUG] Bọc trong Try-Except để không crash chương trình
+        try:
+            # Gọi bộ giải Max-SAT cho bài toán con
+            opt = SingleRouteOptimizer(r, distances)
+            new_r, cost = opt.optimize()
             
-        # In dấu chấm (.) để báo hiệu đang chạy Max-SAT cho route ngắn này
-        print(".", end="", flush=True) 
-        
-        # Gọi bộ giải Max-SAT cho bài toán con
-        opt = SingleRouteOptimizer(r, distances)
-        new_r, cost = opt.optimize()
-        
-        # Kiểm tra lại tải trọng (Safety check)
-        # Mặc dù tối ưu lại thứ tự thường không thay đổi tổng tải trọng, 
-        # nhưng bước này đảm bảo tính toàn vẹn dữ liệu.
-        if sum(demands[c] for c in new_r) <= capacity:
-            opt_routes[v] = new_r
-            total += cost
-        else:
-            # Nếu (rất hiếm) vi phạm tải trọng, giữ lại route cũ
+            # Kiểm tra lại tải trọng (Safety check)
+            if sum(demands[c] for c in new_r) <= capacity:
+                opt_routes[v] = new_r
+                total += cost
+            else:
+                opt_routes[v] = r
+                total += calculate_route_cost(r, distances)
+                
+        except Exception as e:
+            # Nếu gặp lỗi (như lỗi numpy index), in log và giữ nguyên route cũ
+            # Không dừng chương trình!
+            print(f"\n[⚠️ SKIP Route {v}] Lỗi: {e}. Giữ nguyên route cũ.")
             opt_routes[v] = r
             total += calculate_route_cost(r, distances)
             
@@ -1624,7 +1634,21 @@ def solve_with_clarke_wright_and_optimize(filepath: str, verbose: bool = True):
     
     # Step 1: Clarke-Wright
     if verbose: print("\n=== Step 1: Clarke-Wright Heuristic ===")
-    cw_time, cw_routes = ClarkeWright.run(cvrp, n_vehicles)
+    import traceback # Import thư viện debug
+    
+    try:
+        cw_time, cw_routes = ClarkeWright.run(cvrp, n_vehicles)
+    except Exception as e:
+        print("\n" + "!"*60)
+        print(f"⚠️ WARNING: Clarke-Wright failed with k={n_vehicles}. Retrying with k=999 (Unlimited)...")
+        print(f"Error: {e}")
+        try:
+            cw_time, cw_routes = ClarkeWright.run(cvrp, 999)
+            print("✅ Fallback successful with k=999")
+        except Exception as e2:
+             print(f"❌ CRITICAL ERROR during fallback: {e2}")
+             traceback.print_exc()
+             return {}, float('inf'), {}
     
     cw_cost = sum(route.cost for route in cw_routes.values())
     if verbose:
@@ -1661,14 +1685,14 @@ def solve_with_clarke_wright_and_optimize(filepath: str, verbose: bool = True):
     #     n_restarts = 50  # More restarts for small instances
     #     time_limit = 180.0  # 3 minutes
     if n_customers > 80:
-        n_restarts = 5      # Cũ: 50 -> Giảm còn 5
-        time_limit = 60.0   # Cũ: 300.0 -> Giảm còn 60s (1 phút)
+        n_restarts = 5
+        time_limit = 60.0
     elif n_customers > 50:
-        n_restarts = 10     # Cũ: 40 -> Giảm còn 10
-        time_limit = 60.0   # Cũ: 240.0 -> Giảm còn 60s
+        n_restarts = 10
+        time_limit = 60.0
     else:
-        n_restarts = 20     # Cũ: 50 -> Giảm còn 20
-        time_limit = 30.0   # Cũ: 180.0 -> Giảm còn 30s
+        n_restarts = 20
+        time_limit = 30.0
     
     ils_routes, ils_cost = multi_start_ils(
         routes.copy(), cvrp.distances, demands, cvrp.capacity,
@@ -1726,6 +1750,10 @@ def solve_with_clarke_wright_and_optimize(filepath: str, verbose: bool = True):
                     optimal = int(line.split()[1])
                     break
     
+    # Validation Logic
+    final_k = len(pair_routes)
+    is_valid = (final_k == n_vehicles)
+    
     # Summary
     if verbose:
         total_time = cw_time + two_opt_time + ils_time + gls_time + single_time + pair_time
@@ -1740,6 +1768,8 @@ def solve_with_clarke_wright_and_optimize(filepath: str, verbose: bool = True):
         print(f"  + MaxSAT Single:  {opt_cost} (improved {gls_cost - opt_cost})")
         print(f"  + MaxSAT Pair:    {pair_cost} (improved {opt_cost - pair_cost})")
         print(f"  Total time:       {total_time:.3f}s")
+        print(f"  Vehicles:         {final_k} / {n_vehicles} ({'VALID' if is_valid else 'INVALID'})")
+        
         if optimal:
             print(f"\n  Optimal (from file): {optimal}")
             print(f"  Gap: {(pair_cost - optimal) / optimal * 100:.1f}%")
@@ -1749,7 +1779,16 @@ def solve_with_clarke_wright_and_optimize(filepath: str, verbose: bool = True):
             cost = calculate_route_cost(route, cvrp.distances)
             print(f"  Route {v}: {route} (demand={demand}, cost={cost})")
     
-    return pair_routes, pair_cost
+    # Return parameters for logging
+    params = {
+        'n_customers': n_customers,
+        'n_restarts': n_restarts,
+        'time_limit': time_limit,
+        'is_valid': is_valid,
+        'final_k': final_k
+    }
+    
+    return pair_routes, pair_cost, params
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
