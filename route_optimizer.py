@@ -1705,7 +1705,6 @@ def solve_with_clarke_wright_and_optimize(filepath: str, verbose: bool = True):
         print(f"\n  Time: {pair_time:.3f}s")
         print(f"  Cost: {pair_cost}")
     
-    # Get optimal from solution file
     sol_file = filepath.replace('.vrp', '.sol')
     optimal = None
     if os.path.exists(sol_file):
@@ -1715,7 +1714,6 @@ def solve_with_clarke_wright_and_optimize(filepath: str, verbose: bool = True):
                     optimal = int(line.split()[1])
                     break
     
-    # Summary
     if verbose:
         total_time = cw_time + two_opt_time + ils_time + gls_time + single_time + pair_time
         

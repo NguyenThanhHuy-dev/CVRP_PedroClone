@@ -33,10 +33,11 @@ def import_module_from_file(module_name, file_path):
     spec.loader.exec_module(module)
     return module
 
-# Import 2 version optimizer
-# Lưu ý: Đảm bảo file route_optimizer.py và route_optimizer_v3.py nằm cùng thư mục
+# Import 3 version optimizer
+# Lưu ý: Đảm bảo file route_optimizer.py và route_optimizer_v4.py nằm cùng thư mục
 route_optimizer = import_module_from_file("route_optimizer", "route_optimizer.py")
 route_optimizer_v4 = import_module_from_file("route_optimizer_v4", "route_optimizer_v4.py")
+route_optimizer_v4_refactored = import_module_from_file("route_optimizer_v4_refactored", "route_optimizer_v4_refactored.py")
 
 # Database BKS (Best Known Solutions)
 BKS_DB = {
@@ -170,10 +171,14 @@ def run_solver_wrapper(method_choice, filepath):
             raise Exception("File 'route_optimizer.py' không tồn tại!")
         routes, cost = route_optimizer.solve_with_clarke_wright_and_optimize(filepath, verbose=False)
         return routes, cost, {}
-    else:
+    elif method_choice == '2':
         if not route_optimizer_v4:
             raise Exception("File 'route_optimizer_v4.py' không tồn tại!")
         return route_optimizer_v4.solve_with_clarke_wright_and_optimize(filepath, verbose=False)
+    else:  # method_choice == '3' or any other
+        if not route_optimizer_v4_refactored:
+            raise Exception("Folder 'route_optimizer_v4_refactored' hoặc file 'route_optimizer_v4_refactored.py' không tồn tại!")
+        return route_optimizer_v4_refactored.solve_with_clarke_wright_and_optimize(filepath, verbose=False)
 
 def parse_selection(selection_str, max_len):
     """Xử lý chuỗi nhập: '1, 2, 5-8' -> [0, 1, 4, 5, 6, 7]"""
@@ -229,11 +234,17 @@ def run_benchmark():
     print("\n[BƯỚC 2] Chọn Phương Pháp Giải:")
     print("   1. Method 1: route_optimizer.py (Cũ - V1)")
     print("   2. Method 2: route_optimizer_v4.py (Mới/V4)")
+    print("   3. Method 3: route_optimizer_v4_refactored (V4 - Refactored)")
     
-    method_choice = input("👉 Nhập lựa chọn (1/2, Enter=2): ").strip()
-    if method_choice not in ['1', '2']: method_choice = '2'
+    method_choice = input("👉 Nhập lựa chọn (1/2/3, Enter=2): ").strip()
+    if method_choice not in ['1', '2', '3']: method_choice = '2'
     
-    method_name = "V1_Old" if method_choice == '1' else "V4_New"
+    if method_choice == '1':
+        method_name = "V1_Old"
+    elif method_choice == '2':
+        method_name = "V4_New"
+    else:
+        method_name = "V4_Refactored"
 
     print("\n" + "="*65)
     print(f"📂 DANH SÁCH FILE TRONG '{target_dir}'")
