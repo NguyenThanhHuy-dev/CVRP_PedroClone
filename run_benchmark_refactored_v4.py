@@ -31,7 +31,11 @@ def import_module_from_file(module_name, file_path):
     return module
 
 # Import refactored optimizer
-route_optimizer_v4_refactored = import_module_from_file("route_optimizer_v4_refactored", "route_optimizer_v4_refactored.py")
+# Sửa lại dòng import module:
+route_optimizer_v4_refactored = import_module_from_file(
+    "route_optimizer_v4_refactored", 
+    "route_optimizer_v4_refactored/main.py"  # Trỏ đúng vào file main
+)
 
 # Database BKS (Best Known Solutions)
 BKS_DB = {

@@ -19,7 +19,8 @@ import re
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
-sys.path.insert(0, parent_dir)
+sys.path.insert(0, parent_dir)  # Để import classes/...
+sys.path.insert(0, current_dir) # Để import core/..., search/..., optimization/...
 
 from classes.instance import Instance
 from classes.clarke_wright import ClarkeWright
