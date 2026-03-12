@@ -9,7 +9,6 @@ Tối ưu CVRP sử dụng MaxSAT với các chiến lược:
 
 Author: Adapted from RTSS + CVRP MaxSAT paper
 """
-
 import sys
 import os
 import time
@@ -1808,7 +1807,8 @@ def solve_with_clarke_wright_and_optimize(filepath: str, verbose: bool = True):
     # Load instance
     cvrp = Instance(filepath)
     cvrp.load()
-
+    cvrp.distances = np.floor(cvrp.distances + 0.5).astype(int)
+    
     n_vehicles = int(re.search(r"-k(\d+)", filepath).group(1))
 
     if verbose:

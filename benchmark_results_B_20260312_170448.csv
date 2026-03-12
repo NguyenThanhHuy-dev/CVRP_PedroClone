@@ -1,0 +1,9 @@
+Date,Method,Instance,N,K,BKS,Best,Avg,Gap(%),Time(s),Runs,n_customers,n_restarts,time_limit,is_valid,final_k
+2026-03-12 17:10,V4_MaxSAT_SoftConstraint,B-n31-k5,31,5,672,672,672.0,0.00,32.24,10,30,20,30.0,True,5
+2026-03-12 17:17,V4_MaxSAT_SoftConstraint,B-n34-k5,34,5,788,788,788.0,0.00,41.85,10,33,20,30.0,True,5
+2026-03-12 17:23,V4_MaxSAT_SoftConstraint,B-n35-k5,35,5,955,955,955.0,0.00,40.79,10,34,20,30.0,True,5
+2026-03-12 17:29,V4_MaxSAT_SoftConstraint,B-n38-k6,38,6,805,806,806.5,0.12,33.76,10,37,20,30.0,True,6
+2026-03-12 17:35,V4_MaxSAT_SoftConstraint,B-n39-k5,39,5,549,549,549.0,0.00,36.92,10,38,20,30.0,True,5
+2026-03-12 17:41,V4_MaxSAT_SoftConstraint,B-n41-k6,41,6,829,829,829.0,0.00,36.84,10,40,20,30.0,True,6
+2026-03-12 17:47,V4_MaxSAT_SoftConstraint,B-n43-k6,43,6,742,742,742.8,0.00,35.21,10,42,20,30.0,True,6
+2026-03-12 17:54,V4_MaxSAT_SoftConstraint,B-n44-k7,44,7,909,909,909.0,0.00,39.57,10,43,20,30.0,True,7
