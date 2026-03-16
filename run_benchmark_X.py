@@ -99,7 +99,7 @@ def main():
 
     print("\n" + "=" * 70)
     print("BENCHMARK RUNNER FOR ROUTE OPTIMIZER V4 - DATASET X")
-    print("Runs per instance: 10")
+    print("Runs per instance: 1")
     print("=" * 70)
 
     instances_list = []
@@ -169,7 +169,7 @@ def main():
             times = []
             params_list = []
 
-            n_runs = 10
+            n_runs = 1
 
             for run in range(n_runs):
 

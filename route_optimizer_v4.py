@@ -17,6 +17,8 @@ from typing import List, Tuple, Optional, Dict
 from pysat.examples.rc2 import RC2
 from pysat.formula import WCNF
 from itertools import combinations
+import multiprocessing
+import random
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -461,7 +463,7 @@ def relocate_search(
     PENALTY_RATE = 10000.0  # Điểm phạt cực lớn cho 1 đơn vị vượt tải
 
     route_ids = list(routes.keys())
-    
+
     # [TỐI ƯU TỐC ĐỘ]: Tính trước demand hiện tại của tất cả các route
     route_demands = {r_id: sum(demands[c] for c in routes[r_id]) for r_id in route_ids}
 
@@ -490,7 +492,7 @@ def relocate_search(
                     continue
 
                 route2 = routes[r2]
-                
+
                 # Tính mức phạt vượt tải của r2 (trước và sau khi thêm)
                 d2_old = route_demands[r2]
                 overload_r2_old = max(0, d2_old - capacity)
@@ -498,7 +500,10 @@ def relocate_search(
 
                 # Saving từ tiền phạt: Lượng vượt tải cũ trừ lượng vượt tải mới
                 # Nếu giá trị này dương, nghĩa là hệ thống đang "xả" bớt được vi phạm tải trọng
-                penalty_saving = PENALTY_RATE * ((overload_r1_old + overload_r2_old) - (overload_r1_new + overload_r2_new))
+                penalty_saving = PENALTY_RATE * (
+                    (overload_r1_old + overload_r2_old)
+                    - (overload_r1_new + overload_r2_new)
+                )
 
                 # === BỎ ĐIỀU KIỆN HARD CONSTRAINT Ở ĐÂY ===
                 # KHÔNG dùng if demand_r2_old + demands[customer] > capacity: continue nữa
@@ -534,6 +539,7 @@ def relocate_search(
 
     return routes, 0, False
 
+
 def exchange_search(
     routes: Dict[int, List[int]],
     distances: np.ndarray,
@@ -549,7 +555,7 @@ def exchange_search(
     for r1, r2 in combinations(route_ids, 2):
         for pos1, c1 in enumerate(routes[r1]):
             for pos2, c2 in enumerate(routes[r2]):
-                
+
                 # BỎ HARD CONSTRAINT Ở ĐÂY
                 d1_old, d2_old = route_demands[r1], route_demands[r2]
                 d1_new = d1_old - demands[c1] + demands[c2]
@@ -587,6 +593,8 @@ def exchange_search(
         return new_routes, best_saving, True
 
     return routes, 0.0, False
+
+
 def inter_route_local_search(
     routes: Dict[int, List[int]],
     distances: np.ndarray,
@@ -682,7 +690,9 @@ def inter_route_local_search(
                 print(f"  3-opt: -{saving}")
 
     total_distance = sum(calculate_route_cost(r, distances) for r in routes.values())
-    total_penalty = sum(max(0, sum(demands[c] for c in r) - capacity) for r in routes.values())
+    total_penalty = sum(
+        max(0, sum(demands[c] for c in r) - capacity) for r in routes.values()
+    )
     augmented_cost = total_distance + (10000.0 * total_penalty)
 
     if verbose:
@@ -983,9 +993,6 @@ def guided_local_search(
     return best_routes, best_cost
 
 
-import random
-
-
 def perturbation(
     routes: Dict[int, List[int]],
     distances: np.ndarray,
@@ -1166,9 +1173,11 @@ def lns_perturbation(
             for r_id, route in routes.items():
                 old_demand = sum(demands[c] for c in route)
                 new_demand = old_demand + demands[customer]
-                
+
                 # Tính lượng Penalty tăng thêm nếu nhét vào route này
-                penalty_increase = 10000.0 * (max(0, new_demand - capacity) - max(0, old_demand - capacity))
+                penalty_increase = 10000.0 * (
+                    max(0, new_demand - capacity) - max(0, old_demand - capacity)
+                )
 
                 # Không dùng lệnh continue chặn capacity nữa
                 for pos in range(len(route) + 1):
@@ -1180,7 +1189,7 @@ def lns_perturbation(
                         + distances[customer, next_node]
                         - distances[prev_node, next_node]
                     )
-                    
+
                     cost_increase = distance_increase + penalty_increase
                     insertions.append((cost_increase, r_id, pos))
 
@@ -1553,13 +1562,17 @@ def cross_exchange(
                         d1_old, d2_old = route_demands[r1], route_demands[r2]
                         seq1_dem = sum(demands[c] for c in seg1)
                         seq2_dem = sum(demands[c] for c in seg2)
-                        
+
                         d1_new = d1_old - seq1_dem + seq2_dem
                         d2_new = d2_old - seq2_dem + seq1_dem
 
                         # Tính Penalty
-                        penalty_old = max(0, d1_old - capacity) + max(0, d2_old - capacity)
-                        penalty_new = max(0, d1_new - capacity) + max(0, d2_new - capacity)
+                        penalty_old = max(0, d1_old - capacity) + max(
+                            0, d2_old - capacity
+                        )
+                        penalty_new = max(0, d1_new - capacity) + max(
+                            0, d2_new - capacity
+                        )
                         penalty_saving = PENALTY_RATE * (penalty_old - penalty_new)
 
                         # BỎ HARD CONSTRAINT ĐI.
@@ -1601,6 +1614,7 @@ def cross_exchange(
 
     return routes, 0.0, False
 
+
 def or_opt_search(
     routes: Dict[int, List[int]],
     distances: np.ndarray,
@@ -1616,7 +1630,8 @@ def or_opt_search(
 
     for r1 in route_ids:
         route1 = routes[r1]
-        if len(route1) < seq_len: continue
+        if len(route1) < seq_len:
+            continue
 
         for pos1 in range(len(route1) - seq_len + 1):
             seq = route1[pos1 : pos1 + seq_len]
@@ -1624,28 +1639,36 @@ def or_opt_search(
 
             prev1 = route1[pos1 - 1] if pos1 > 0 else 0
             next1 = route1[pos1 + seq_len] if pos1 + seq_len < len(route1) else 0
-            remove_cost = (distances[prev1, seq[0]] + distances[seq[-1], next1]) - distances[prev1, next1]
+            remove_cost = (
+                distances[prev1, seq[0]] + distances[seq[-1], next1]
+            ) - distances[prev1, next1]
 
             d1_old = route_demands[r1]
             overload_r1_old = max(0, d1_old - capacity)
             overload_r1_new = max(0, d1_old - seq_demand - capacity)
 
             for r2 in route_ids:
-                if r1 == r2: continue
+                if r1 == r2:
+                    continue
                 route2 = routes[r2]
-                
+
                 d2_old = route_demands[r2]
                 overload_r2_old = max(0, d2_old - capacity)
                 overload_r2_new = max(0, d2_old + seq_demand - capacity)
-                
-                penalty_saving = PENALTY_RATE * ((overload_r1_old + overload_r2_old) - (overload_r1_new + overload_r2_new))
+
+                penalty_saving = PENALTY_RATE * (
+                    (overload_r1_old + overload_r2_old)
+                    - (overload_r1_new + overload_r2_new)
+                )
 
                 # BỎ HARD CONSTRAINT
                 for pos2 in range(len(route2) + 1):
                     prev2 = route2[pos2 - 1] if pos2 > 0 else 0
                     next2 = route2[pos2] if pos2 < len(route2) else 0
 
-                    insert_cost = (distances[prev2, seq[0]] + distances[seq[-1], next2]) - distances[prev2, next2]
+                    insert_cost = (
+                        distances[prev2, seq[0]] + distances[seq[-1], next2]
+                    ) - distances[prev2, next2]
                     total_saving = (remove_cost - insert_cost) + penalty_saving
 
                     if total_saving > best_saving:
@@ -1660,26 +1683,41 @@ def or_opt_search(
         return new_routes, best_saving, True
 
     return routes, 0.0, False
+
+
+def _solve_pairwise_worker(customers1, customers2, distances, demands, capacity):
+    """
+    Hàm thực thi chạy trên một tiến trình (Process) độc lập.
+    Khởi tạo lại Optimizer để tránh lỗi chia sẻ bộ nhớ của PySAT.
+    """
+    optimizer = PairwiseRouteOptimizer(
+        customers1, customers2, distances, demands, capacity
+    )
+    return optimizer.optimize()
+
+
+def _solve_single_worker(customers, distances):
+    """
+    Hàm thực thi chạy trên một tiến trình (Process) độc lập cho Single Route.
+    """
+    opt = SingleRouteOptimizer(customers, distances)
+    return opt.optimize()
+
+
 def pairwise_optimize(
     routes: Dict[int, List[int]],
     distances: np.ndarray,
     demands: np.ndarray,
     capacity: int,
     max_iterations: int = 2,
-) -> Tuple[Dict[int, List[int]], int]:  # Giảm max_iter từ 10 -> 2
-    """
-    Tối ưu bằng cách gộp từng cặp routes và tối ưu lại.
-    [FIXED] Giảm ngưỡng và số vòng lặp để tránh treo máy.
-    """
-    print("\n=== Pair-wise Route Optimization ===")
+) -> Tuple[Dict[int, List[int]], int]:
 
+    print("\n=== Pair-wise Route Optimization ===")
     improved = True
     iteration = 0
     import time
 
     global_start = time.time()
-
-    # Giới hạn tổng thời gian cho bước này là 3 phút
     MAX_STEP_TIME = 180
 
     while improved and iteration < max_iterations:
@@ -1691,13 +1729,10 @@ def pairwise_optimize(
 
         improved = False
         iteration += 1
-        print(f"\n  Iteration {iteration}:")
+        print(f"\n  Iteration {iteration}:", end=" ")
 
         route_ids = list(routes.keys())
-        # Sắp xếp để ưu tiên các route nhỏ trước
         route_ids.sort(key=lambda rid: len(routes[rid]))
-
-        pair_count = 0
 
         for i, j in combinations(route_ids, 2):
             if time.time() - global_start > MAX_STEP_TIME:
@@ -1705,34 +1740,51 @@ def pairwise_optimize(
             if not routes[i] or not routes[j]:
                 continue
 
-            # [CRITICAL FIX] Giảm ngưỡng từ 10 xuống 8 để an toàn
-            # MaxSAT với N>9 thường rất rủi ro về thời gian
-            if len(routes[i]) + len(routes[j]) > 8:
+            # Giờ đây nhờ có Timeout bảo vệ, ta có thể mạnh dạn tăng ngưỡng lên 10
+            if len(routes[i]) + len(routes[j]) > 10:
                 continue
 
-            # Current cost of pair
             cost_i = calculate_route_cost(routes[i], distances)
             cost_j = calculate_route_cost(routes[j], distances)
             current_cost = cost_i + cost_j
 
-            # In dấu chấm để biết chương trình vẫn đang chạy
-            print(".", end="", flush=True)
+            # --- BẮT ĐẦU ĐOẠN CODE MULTIPROCESSING TIMEOUT ---
+            # Tạo 1 process duy nhất để chạy Max-SAT
+            pool = multiprocessing.Pool(processes=1)
 
-            # Try to optimize this pair
-            optimizer = PairwiseRouteOptimizer(
-                routes[i], routes[j], distances, demands, capacity
+            # Giao việc cho Process
+            async_result = pool.apply_async(
+                _solve_pairwise_worker,
+                (routes[i], routes[j], distances, demands, capacity),
             )
-            # Vì hàm optimize bên trong chưa implement timeout thực sự cho RC2,
-            # việc giảm ngưỡng xuống 8 ở trên là biện pháp bảo vệ chính.
-            new_route_i, new_route_j, new_cost = optimizer.optimize()
 
-            if new_cost < current_cost:
-                print(
-                    f"\n    Routes {i},{j} (Sz {len(routes[i])}+{len(routes[j])}): {current_cost} -> {new_cost} (IMPROVED -{current_cost - new_cost})"
-                )
-                routes[i] = new_route_i
-                routes[j] = new_route_j
-                improved = True
+            try:
+                # ÉP TIMEOUT Ở ĐÂY: Chờ tối đa 5 giây cho mỗi cặp
+                new_route_i, new_route_j, new_cost = async_result.get(timeout=5.0)
+
+                if new_cost < current_cost:
+                    # In kết quả nếu cải thiện
+                    print(
+                        f"\n    Routes {i},{j} (Sz {len(routes[i])}+{len(routes[j])}): {current_cost} -> {new_cost} (IMPROVED -{current_cost - new_cost})"
+                    )
+                    routes[i] = new_route_i
+                    routes[j] = new_route_j
+                    improved = True
+                else:
+                    # In dấu chấm nếu chạy xong mà không cải thiện
+                    print(".", end="", flush=True)
+
+            except multiprocessing.TimeoutError:
+                # BỊ KẸT MÁY: In chữ 'T' báo hiệu Timeout và bỏ qua
+                print("T", end="", flush=True)
+            except Exception as e:
+                # Lỗi khác: In chữ 'E'
+                print("E", end="", flush=True)
+            finally:
+                # QUAN TRỌNG NHẤT: Bất kể thành công hay bị kẹt, ép "rút phích cắm" process con
+                pool.terminate()
+                pool.join()
+            # --- KẾT THÚC ĐOẠN CODE MULTIPROCESSING TIMEOUT ---
 
     total_cost = sum(calculate_route_cost(r, distances) for r in routes.values())
     print(f"\n  Pair-wise done. Final cost: {total_cost}")
@@ -1753,37 +1805,46 @@ def optimize_all_routes(routes, distances, demands, capacity):
             print("!", end="", flush=True)
             continue
 
-        # 2. [FIX QUAN TRỌNG] Bỏ qua tuyến quá ngắn (0 hoặc 1 khách)
-        # Tuyến 1 khách luôn là tối ưu (Depot -> Khách -> Depot), không cần chạy SAT
+        # 2. Bỏ qua tuyến quá ngắn (0 hoặc 1 khách)
         if len(r) <= 1:
             opt_routes[v] = r
             total += calculate_route_cost(r, distances)
-            # In dấu "-" để báo hiệu là skip do quá ngắn
             print("-", end="", flush=True)
             continue
 
-        print(".", end="", flush=True)
+        # --- BẮT ĐẦU ĐOẠN CODE MULTIPROCESSING TIMEOUT ---
+        pool = multiprocessing.Pool(processes=1)
+        async_result = pool.apply_async(_solve_single_worker, (r, distances))
 
-        # 3. [DEBUG] Bọc trong Try-Except để không crash chương trình
         try:
-            # Gọi bộ giải Max-SAT cho bài toán con
-            opt = SingleRouteOptimizer(r, distances)
-            new_r, cost = opt.optimize()
+            # ÉP TIMEOUT Ở ĐÂY: Chờ tối đa 5 giây cho mỗi tuyến đơn
+            new_r, cost = async_result.get(timeout=5.0)
 
             # Kiểm tra lại tải trọng (Safety check)
             if sum(demands[c] for c in new_r) <= capacity:
                 opt_routes[v] = new_r
                 total += cost
+                print(".", end="", flush=True)
             else:
                 opt_routes[v] = r
                 total += calculate_route_cost(r, distances)
+                print(".", end="", flush=True)
 
-        except Exception as e:
-            # Nếu gặp lỗi (như lỗi numpy index), in log và giữ nguyên route cũ
-            # Không dừng chương trình!
-            print(f"\n[⚠️ SKIP Route {v}] Lỗi: {e}. Giữ nguyên route cũ.")
+        except multiprocessing.TimeoutError:
+            # BỊ KẸT MÁY: In chữ 'T' báo hiệu Timeout và giữ nguyên route cũ
+            print("T", end="", flush=True)
             opt_routes[v] = r
             total += calculate_route_cost(r, distances)
+        except Exception as e:
+            # Lỗi khác: In chữ 'E' và giữ nguyên route cũ
+            print("E", end="", flush=True)
+            opt_routes[v] = r
+            total += calculate_route_cost(r, distances)
+        finally:
+            # Đảm bảo tắt process để giải phóng tài nguyên
+            pool.terminate()
+            pool.join()
+        # --- KẾT THÚC ĐOẠN CODE MULTIPROCESSING TIMEOUT ---
 
     print("\n  Single Route Optimization done.")
     return opt_routes, total
@@ -1808,7 +1869,7 @@ def solve_with_clarke_wright_and_optimize(filepath: str, verbose: bool = True):
     cvrp = Instance(filepath)
     cvrp.load()
     cvrp.distances = np.floor(cvrp.distances + 0.5).astype(int)
-    
+
     n_vehicles = int(re.search(r"-k(\d+)", filepath).group(1))
 
     if verbose:
@@ -1817,7 +1878,7 @@ def solve_with_clarke_wright_and_optimize(filepath: str, verbose: bool = True):
         print(f"  Vehicles: {n_vehicles}")
         print(f"  Capacity: {cvrp.capacity}")
 
-# Step 1: Clarke-Wright
+    # Step 1: Clarke-Wright
     if verbose:
         print("\n=== Step 1: Clarke-Wright Heuristic ===")
     import traceback  # Import thư viện debug
@@ -1826,7 +1887,9 @@ def solve_with_clarke_wright_and_optimize(filepath: str, verbose: bool = True):
         cw_time, cw_routes = ClarkeWright.run(cvrp, n_vehicles)
     except Exception as e:
         print("\n" + "!" * 60)
-        print(f"⚠️ WARNING: Clarke-Wright failed with k={n_vehicles}. Retrying with k=999 (Unlimited)...")
+        print(
+            f"⚠️ WARNING: Clarke-Wright failed with k={n_vehicles}. Retrying with k=999 (Unlimited)..."
+        )
         try:
             cw_time, cw_routes = ClarkeWright.run(cvrp, 999)
             print("✅ Fallback successful with k=999")
@@ -1854,7 +1917,7 @@ def solve_with_clarke_wright_and_optimize(filepath: str, verbose: bool = True):
         i: list(route.value) for i, (_, route) in enumerate(two_opt_routes.items())
     }
     routes = {i: r for i, r in routes.items() if len(r) > 0}
-    
+
     demands = np.array(cvrp.demands)
 
     # ÉP TUYẾN (REPAIR) VỀ ĐÚNG N_VEHICLES TRƯỚC KHI ĐƯA VÀO ILS
@@ -1877,18 +1940,12 @@ def solve_with_clarke_wright_and_optimize(filepath: str, verbose: bool = True):
 
     # Adaptive parameters based on instance size - GREEDY settings
     n_customers = len(demands) - 1  # Exclude depot
-    # if n_customers > 80:
-    #     n_restarts = 50
-    #     time_limit = 300.0  # 5 minutes
-    # elif n_customers > 50:
-    #     n_restarts = 40
-    #     time_limit = 240.0  # 4 minutes
-    # else:
-    #     n_restarts = 50  # More restarts for small instances
-    #     time_limit = 180.0  # 3 minutes
-    if n_customers > 80:
+    if n_customers > 120:
+        n_restarts = 3
+        time_limit = 300.0
+    elif n_customers > 80:
         n_restarts = 5
-        time_limit = 60.0
+        time_limit = 120.0
     elif n_customers > 50:
         n_restarts = 10
         time_limit = 60.0
@@ -1967,7 +2024,7 @@ def solve_with_clarke_wright_and_optimize(filepath: str, verbose: bool = True):
 
     # Clean up empty routes
     pair_routes = {i: r for i, r in enumerate(r for r in pair_routes.values() if r)}
-    
+
     # Validation Logic
     final_k = len(pair_routes)
     is_valid = final_k == n_vehicles
@@ -2035,10 +2092,10 @@ def route_reduction_repair(routes, demands, capacity, distances, k):
                 for pos in range(len(r) + 1):
                     prev_node = r[pos - 1] if pos > 0 else 0
                     next_node = r[pos] if pos < len(r) else 0
-                    
+
                     cost_increase = (
-                        distances[prev_node][customer] 
-                        + distances[customer][next_node] 
+                        distances[prev_node][customer]
+                        + distances[customer][next_node]
                         - distances[prev_node][next_node]
                     )
 
@@ -2052,6 +2109,8 @@ def route_reduction_repair(routes, demands, capacity, distances, k):
 
     print(f"  Đã ép cứng về {k} tuyến (Có thể đang bị vượt tải).")
     return {i: r for i, r in enumerate(routes_list)}
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         filepath = sys.argv[1]
