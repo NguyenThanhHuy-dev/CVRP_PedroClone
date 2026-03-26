@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+
+# OS
+.DS_Store
+
+# Solver temp files
+input.txt
+output.txt

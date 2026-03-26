@@ -1,0 +1,984 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[vietnamese,english]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning,calc,decorations.pathreplacing,fit}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{float}
+\usepackage{longtable}
+\usepackage{enumitem}
+\geometry{margin=2.5cm}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{example}{Example}[section]
+\newtheorem{remark}{Remark}[section]
+
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny,
+    breaklines=true,
+    frame=single,
+    showstringspaces=false,
+    tabsize=4
+}
+
+\title{\textbf{Post-Improvement of the Capacitated Vehicle Routing Problem\\Using a Weighted Partial Max-SAT Solver}\\[1em]
+\large Complete Technical Documentation}
+\author{RTSS Research Group}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+%=============================================================================
+\section{Introduction}
+%=============================================================================
+
+\subsection{Problem Overview}
+
+The Capacitated Vehicle Routing Problem (CVRP) is one of the most studied combinatorial optimization problems in operations research. Given a set of customers with known demands, a central depot, and a fleet of homogeneous vehicles with limited capacity, the objective is to find a set of routes --- each starting and ending at the depot --- that serves all customers while minimizing the total travel distance.
+
+CVRP is NP-hard, meaning that no polynomial-time algorithm is known to solve all instances optimally. Practical approaches therefore combine heuristic construction with exact or near-exact improvement methods.
+
+\subsection{Our Approach}
+
+We propose a \textbf{post-improvement pipeline} consisting of four phases:
+
+\begin{enumerate}[label=\textbf{Phase \arabic*:}]
+    \item \textbf{Initial Solution Construction} --- An enhanced Clarke-Wright (CW) savings algorithm with a multi-strategy route reduction mechanism and sweep fallback
+    \item \textbf{Intra-Route Improvement} --- 2-Opt local search applied to each individual route
+    \item \textbf{Search Space Expansion} --- K-Nearest Neighbors (KNN) using a Minimum Spanning Tree to define the set of candidate edges for each vehicle
+    \item \textbf{Global Optimization} --- A Weighted Partial Max-SAT model solved by the \texttt{clasp} PBO solver
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    block/.style={rectangle, draw, fill=blue!15, text width=4cm, text centered, minimum height=1.5cm, rounded corners, font=\small},
+    subblock/.style={rectangle, draw, fill=orange!10, text width=3.2cm, text centered, minimum height=0.8cm, rounded corners, font=\footnotesize},
+    arrow/.style={thick,->,>=stealth},
+    label/.style={font=\footnotesize\itshape, text=gray}
+]
+\node[block] (cw) {Phase 1:\\Enhanced\\Clarke-Wright};
+\node[block, right=1.2cm of cw] (opt) {Phase 2:\\2-Opt\\Improvement};
+\node[block, right=1.2cm of opt] (knn) {Phase 3:\\K-Nearest\\Neighbors};
+\node[block, right=1.2cm of knn] (sat) {Phase 4:\\Max-SAT\\Solver (\texttt{clasp})};
+
+\draw[arrow] (cw) -- node[above, font=\scriptsize]{$K$ routes} (opt);
+\draw[arrow] (opt) -- node[above, font=\scriptsize]{improved} (knn);
+\draw[arrow] (knn) -- node[above, font=\scriptsize]{matrices} (sat);
+
+\node[label, below=0.5cm of cw] {CW + Reduce + Sweep};
+\node[label, below=0.5cm of opt] {Intra-route};
+\node[label, below=0.5cm of knn] {MST-based};
+\node[label, below=0.5cm of sat] {PBO encoding};
+
+\end{tikzpicture}
+\caption{The four-phase pipeline of the CVRP post-improvement approach.}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Key Contributions}
+
+\begin{itemize}
+    \item An \textbf{enhanced Clarke-Wright algorithm} with a four-strategy route reduction mechanism that reliably produces exactly $K$ feasible routes, even for extremely tight capacity instances (tightness up to 100\%).
+    \item A \textbf{sweep construction fallback} that provides an alternative starting solution when the standard CW merge phase cannot reach $K$ routes.
+    \item A \textbf{BFD + Recursive Swap Repair} bin packing algorithm that solves the combinatorially hard route reduction sub-problem.
+    \item Integration with a \textbf{PBO/Max-SAT solver} using MTZ subtour elimination with binary encoding of position variables.
+\end{itemize}
+
+%=============================================================================
+\section{Problem Formulation}
+%=============================================================================
+
+\subsection{Formal Definition}
+
+\begin{definition}[Capacitated Vehicle Routing Problem]
+Let $G = (V, E)$ be a complete undirected graph where:
+\begin{itemize}
+    \item $V = \{0, 1, 2, \ldots, n-1\}$ is the set of vertices, with node $0$ as the \textbf{depot}
+    \item Nodes $\{1, 2, \ldots, n-1\}$ are \textbf{customer locations}
+    \item Each customer $i$ has a demand $q_i > 0$; the depot has $q_0 = 0$
+    \item Each edge $(i,j) \in E$ has a non-negative cost $d_{ij}$ (typically Euclidean distance)
+    \item A fleet of $K$ identical vehicles, each with capacity $Q$, is stationed at the depot
+\end{itemize}
+
+The objective is to find $K$ routes $R_1, R_2, \ldots, R_K$ such that:
+\begin{enumerate}
+    \item Each route starts and ends at the depot: $R_v = (0, c_{v,1}, c_{v,2}, \ldots, c_{v,|R_v|}, 0)$
+    \item Every customer is served by exactly one route: $\bigcup_{v=1}^{K} R_v = \{1, \ldots, n-1\}$ and $R_v \cap R_w = \emptyset$ for $v \neq w$
+    \item The capacity constraint is respected: $\sum_{c \in R_v} q_c \leq Q, \quad \forall v$
+    \item The total travel distance is minimized:
+\end{enumerate}
+\begin{equation}
+\min \sum_{v=1}^{K} \text{cost}(R_v) = \min \sum_{v=1}^{K} \left( d_{0,c_{v,1}} + \sum_{i=1}^{|R_v|-1} d_{c_{v,i}, c_{v,i+1}} + d_{c_{v,|R_v|}, 0} \right)
+\end{equation}
+\end{definition}
+
+\subsection{Capacity Tightness}
+
+A key parameter that determines the difficulty of constructing a feasible initial solution is the \textbf{capacity tightness}:
+
+\begin{definition}[Capacity Tightness]
+\begin{equation}
+\tau = \frac{\sum_{i=1}^{n-1} q_i}{K \cdot Q} \times 100\%
+\end{equation}
+\end{definition}
+
+\begin{remark}
+When $\tau$ approaches $100\%$, there is almost no slack in the capacity constraints. In such cases, the standard Clarke-Wright merge phase may fail to produce exactly $K$ routes, since merging two routes becomes infeasible when their combined demand exceeds $Q$. Our enhanced reduction mechanism addresses this challenge.
+\end{remark}
+
+%=============================================================================
+\section{Phase 1: Enhanced Clarke-Wright Construction}
+%=============================================================================
+
+The Clarke-Wright (CW) savings algorithm is one of the most widely used heuristics for CVRP. We enhance it with a robust \textbf{four-strategy route reduction} mechanism and a \textbf{sweep construction fallback}.
+
+\subsection{Standard Clarke-Wright Algorithm}
+
+\subsubsection{Savings Computation}
+
+\begin{definition}[Savings Value]
+For two customers $i, j \neq 0$, the savings from merging their individual routes is:
+\begin{equation}
+s_{ij} = d_{0,i} + d_{0,j} - d_{ij}
+\end{equation}
+\end{definition}
+
+\textbf{Interpretation:} Instead of two separate round-trips ($0 \to i \to 0$ and $0 \to j \to 0$), merging into one route ($0 \to \cdots \to i \to j \to \cdots \to 0$) saves distance $s_{ij}$.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[scale=1.2]
+% Before merging
+\node[circle,draw,fill=red!30,minimum size=0.8cm] (d1) at (0,0) {\small D};
+\node[circle,draw,fill=blue!30,minimum size=0.8cm] (i1) at (-1.5,1.5) {\small $i$};
+\node[circle,draw,fill=blue!30,minimum size=0.8cm] (j1) at (1.5,1.5) {\small $j$};
+
+\draw[->,thick,gray] (d1) -- (i1);
+\draw[->,thick,gray] (i1) -- (d1);
+\draw[->,thick,gray] (d1) -- (j1);
+\draw[->,thick,gray] (j1) -- (d1);
+
+\node[font=\small] at (0,-0.8) {Cost: $2d_{0,i} + 2d_{0,j}$};
+\node[font=\small\bfseries] at (0,2.3) {Before};
+
+% Arrow
+\draw[->,very thick] (2.8,0.75) -- (3.8,0.75);
+
+% After merging
+\node[circle,draw,fill=red!30,minimum size=0.8cm] (d2) at (6,0) {\small D};
+\node[circle,draw,fill=blue!30,minimum size=0.8cm] (i2) at (4.5,1.5) {\small $i$};
+\node[circle,draw,fill=blue!30,minimum size=0.8cm] (j2) at (7.5,1.5) {\small $j$};
+
+\draw[->,thick,green!60!black] (d2) -- (i2);
+\draw[->,thick,green!60!black] (i2) -- (j2);
+\draw[->,thick,green!60!black] (j2) -- (d2);
+
+\node[font=\small] at (6,-0.8) {Cost: $d_{0,i} + d_{ij} + d_{j,0}$};
+\node[font=\small\bfseries] at (6,2.3) {After};
+
+\end{tikzpicture}
+\caption{The savings concept: merging two individual routes saves $s_{ij} = d_{0,i} + d_{0,j} - d_{ij}$.}
+\end{figure}
+
+\subsubsection{Merge Phase}
+
+The standard CW algorithm proceeds as follows:
+
+\begin{algorithm}[H]
+\caption{Clarke-Wright Savings Algorithm --- Standard Phase}
+\begin{algorithmic}[1]
+\Require Distance matrix $D$, demands $q$, capacity $Q$, number of vehicles $K$
+\Ensure Set of routes $\mathcal{R}$
+
+\State \textbf{Compute Savings:}
+\For{$i = 1$ to $n-1$}
+    \For{$j = i+1$ to $n-1$}
+        \State $s_{ij} \gets d_{0,i} + d_{0,j} - d_{ij}$
+    \EndFor
+\EndFor
+\State Sort savings in descending order
+
+\State \textbf{Initialize:} Create one route per customer: $R_i = [i]$ for $i = 1, \ldots, n-1$
+
+\State \textbf{Merge Phase:}
+\For{each $(s_{ij}, i, j)$ in savings list}
+    \If{$R_i \neq R_j$ \textbf{and} $i$ is at the end of $R_i$ \textbf{and} $j$ is at the start of $R_j$}
+        \If{$\text{demand}(R_i) + \text{demand}(R_j) \leq Q$}
+            \State $R_i \gets R_i \circ R_j$ \Comment{Concatenate}
+            \State Delete $R_j$
+        \EndIf
+    \EndIf
+\EndFor
+\State \Return $\mathcal{R}$
+\end{algorithmic}
+\end{algorithm}
+
+After the merge phase, the number of remaining routes $|\mathcal{R}|$ is typically $\geq K$. If $|\mathcal{R}| > K$, a \textbf{route reduction} phase is needed.
+
+\subsection{Four-Strategy Route Reduction}
+
+\label{sec:reduce}
+
+The route reduction problem is: given a feasible partition with $|\mathcal{R}| > K$ routes, transform it into a partition with exactly $K$ routes, each respecting the capacity constraint $Q$.
+
+Our method applies four strategies in sequence, from cheapest to most expensive. Each iteration reduces the route count by one.
+
+\begin{algorithm}[H]
+\caption{Multi-Strategy Route Reduction}
+\begin{algorithmic}[1]
+\While{$|\mathcal{R}| > K$}
+    \If{Strategy 1 (Direct Merge) succeeds}
+        \State \textbf{continue}
+    \ElsIf{Strategy 2 (Relocate + Merge) succeeds}
+        \State \textbf{continue}
+    \ElsIf{Strategy 3 (Dissolve Route) succeeds}
+        \State \textbf{continue}
+    \ElsIf{Strategy 4 (Bin Packing Repack) succeeds}
+        \State \Return \Comment{Produces exactly $K$ routes}
+    \Else
+        \State \textbf{raise} failure $\to$ trigger sweep fallback
+    \EndIf
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Strategy 1: Direct Merge}
+
+Find two routes whose combined demand does not exceed $Q$. Among all feasible pairs, choose the one with the smallest linking distance (the distance between the last customer of one route and the first customer of the other).
+
+\begin{equation}
+\text{Choose } (R_a, R_b) = \arg\min_{(R_i, R_j)} \left\{ \min\left( d_{R_i[-1], R_j[0]},\; d_{R_j[-1], R_i[0]} \right) \;\middle|\; \text{demand}(R_i) + \text{demand}(R_j) \leq Q \right\}
+\end{equation}
+
+\textbf{Complexity:} $O(|\mathcal{R}|^2)$ per iteration.
+
+\subsubsection{Strategy 2: Relocate and Merge}
+
+When no pair of routes can be directly merged, we attempt to \emph{move customers out} of a pair to make room for merging.
+
+\begin{algorithm}[H]
+\caption{Strategy 2: Relocate and Merge}
+\begin{algorithmic}[1]
+\For{each pair $(R_a, R_b)$ sorted by excess demand $\delta = \text{demand}(R_a) + \text{demand}(R_b) - Q$ ascending}
+    \State Collect candidates: customers from $R_a \cup R_b$, sorted by demand descending
+    \For{each candidate customer $c$}
+        \If{$\delta \leq 0$} \textbf{break} \EndIf
+        \State Find a third route $R_t$ ($t \neq a, b$) with cheapest insertion position for $c$
+        \If{$\text{demand}(R_t) + q_c \leq Q$}
+            \State Move $c$ from its source into $R_t$
+            \State $\delta \gets \delta - q_c$
+        \EndIf
+    \EndFor
+    \If{$\delta \leq 0$}
+        \State Merge $R_a$ and $R_b$
+        \State \Return success
+    \Else
+        \State Undo all moves
+    \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Strategy 3: Dissolve Route}
+
+Dissolve the smallest route by redistributing its customers into other routes using best-insertion. Customers are placed in decreasing order of demand (largest first) to fail early if infeasible.
+
+\begin{algorithm}[H]
+\caption{Strategy 3: Dissolve Route}
+\begin{algorithmic}[1]
+\For{each route $R_s$ in $\mathcal{R}$ sorted by size ascending}
+    \State Remove $R_s$ from $\mathcal{R}$
+    \State Sort customers of $R_s$ by demand descending
+    \State placed $\gets []$
+    \For{each customer $c$ in $R_s$}
+        \State Find $(R_t, \text{pos})$ with minimum insertion cost such that $\text{demand}(R_t) + q_c \leq Q$
+        \If{found}
+            \State Insert $c$ at position pos in $R_t$
+            \State placed.append($c, R_t$)
+        \Else
+            \State Undo all placements; restore $R_s$; try next route
+            \State \textbf{break}
+        \EndIf
+    \EndFor
+    \If{all customers placed}
+        \State \Return success
+    \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Strategy 4: BFD + Recursive Swap Repair (Bin Packing)}
+
+When Strategies 1--3 all fail, the instance is extremely tight. We reformulate the route reduction as a \textbf{bin packing problem}: pack all $n-1$ customers into exactly $K$ bins of capacity $Q$.
+
+\paragraph{Greedy Phase.} We first try three greedy heuristics (Balanced, First-Fit Decreasing, Best-Fit Decreasing). If any succeeds, we use that packing.
+
+\paragraph{BFD + Swap Repair.} If all greedy strategies fail (common when $\tau \approx 100\%$), we use a two-phase algorithm:
+
+\begin{algorithm}[H]
+\caption{BFD + Recursive Swap Repair}
+\begin{algorithmic}[1]
+\Require Customers sorted by demand descending, $K$ bins of capacity $Q$
+\Ensure Packing of all customers into $K$ bins, or failure
+
+\State \textbf{Phase 1: Best-Fit Decreasing Placement}
+\For{each customer $c$ (demand descending)}
+    \State Place $c$ in the fullest bin that still has room
+    \If{no bin has room}
+        \State Add $c$ to \texttt{unplaced} list
+    \EndIf
+\EndFor
+
+\If{\texttt{unplaced} is empty}
+    \State \Return bins
+\EndIf
+
+\State \textbf{Phase 2: Recursive Swap Repair}
+\For{each $c$ in \texttt{unplaced}}
+    \If{\Call{TryPlace}{$c$, depth $= 3$, forbidden $= \{c\}$}}
+        \State Remove $c$ from \texttt{unplaced}
+    \Else
+        \State \Return failure
+    \EndIf
+\EndFor
+\State \Return bins
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{TryPlace --- Recursive Swap}
+\begin{algorithmic}[1]
+\Function{TryPlace}{customer $c$, depth, forbidden}
+    \State $d_c \gets q_c$ \Comment{Demand of customer $c$}
+    \For{each bin $b = 1, \ldots, K$}
+        \If{$\text{load}(b) + d_c \leq Q$}
+            \State Place $c$ in $b$
+            \State \Return True \Comment{Direct placement}
+        \EndIf
+    \EndFor
+    
+    \If{depth $= 0$}
+        \State \Return False
+    \EndIf
+    
+    \For{each bin $b$}
+        \For{each item $x$ in bin $b$ where $x \notin$ forbidden}
+            \If{$\text{load}(b) - q_x + d_c \leq Q$}
+                \State Remove $x$ from $b$; place $c$ in $b$
+                \If{\Call{TryPlace}{$x$, depth $-1$, forbidden $\cup \{c\}$}}
+                    \State \Return True
+                \EndIf
+                \State Undo: remove $c$ from $b$; restore $x$ in $b$
+            \EndIf
+        \EndFor
+    \EndFor
+    \State \Return False
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{proposition}[Complexity of Swap Repair]
+With depth $d$ and $n$ customers in $K$ bins, the worst-case complexity of \textsc{TryPlace} for a single unplaced item is $O((nK)^d)$. With $d = 3$, $n = 100$, and $K = 25$, this is bounded by $(2500)^3 \approx 1.6 \times 10^{10}$. In practice, early pruning and the BFD pre-placement (which places most items directly) result in sub-second runtime.
+\end{proposition}
+
+\subsection{Sweep Construction Fallback}
+
+If the entire reduction phase fails (all 4 strategies exhaust), we fall back to a \textbf{sweep algorithm} to construct a completely new set of routes, then re-apply the reduction.
+
+\begin{algorithm}[H]
+\caption{Sweep Construction}
+\begin{algorithmic}[1]
+\Require Customers with coordinates, depot $(x_0, y_0)$, capacity $Q$
+\Ensure Set of routes $\mathcal{R}$
+
+\For{each customer $c$}
+    \State $\theta_c \gets \text{atan2}(y_c - y_0, \; x_c - x_0)$
+\EndFor
+\State Sort customers by $\theta_c$
+
+\State $\mathcal{R}_{\text{best}} \gets \emptyset$
+\For{$s = 0$ to $n-2$} \Comment{Try all starting positions}
+    \State Build routes by sweeping from customer $s$, opening a new route when capacity is exceeded
+    \If{$|\mathcal{R}| < |\mathcal{R}_{\text{best}}|$}
+        \State $\mathcal{R}_{\text{best}} \gets \mathcal{R}$
+    \EndIf
+\EndFor
+\State \Return $\mathcal{R}_{\text{best}}$
+\end{algorithmic}
+\end{algorithm}
+
+The sweep algorithm produces routes with more balanced loads (compared to CW's greedy merging), making it easier for the subsequent reduction to reach exactly $K$ routes.
+
+\subsection{Overall CW + Reduction + Fallback Flow}
+
+\begin{algorithm}[H]
+\caption{Enhanced Clarke-Wright --- Complete Procedure}
+\begin{algorithmic}[1]
+\Require Instance $(n, K, D, q, Q)$
+\Ensure $K$ feasible routes
+
+\State Run standard CW (savings $\to$ merge)
+\State \textbf{try:}
+\State \quad Run 4-strategy reduction to get $K$ routes
+\State \textbf{catch failure:}
+\State \quad Run sweep construction
+\State \quad Run 4-strategy reduction on sweep result
+\State \Return $K$ routes
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Experimental Validation}
+
+We tested on 30 benchmark instances including all 23 Christofides-Mingozzi-Toth series B instances and 7 additional instances from the A, E, F, P, and X series.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Instance Group} & \textbf{Count} & \textbf{Tightness Range} & \textbf{Success Rate} & \textbf{Max Time} \\
+\midrule
+B-series (n31--n78) & 23 & 82\%--100\% & 23/23 & 0.003s \\
+A, E, F, P instances & 6 & 68\%--94\% & 6/6 & 0.001s \\
+X-n101-k25 & 1 & 100\% & 1/1 & 0.152s \\
+\midrule
+\textbf{Total} & \textbf{30} & 68\%--100\% & \textbf{30/30} & \textbf{0.152s} \\
+\bottomrule
+\end{tabular}
+\caption{Enhanced CW construction results. All instances produce exactly $K$ feasible routes.}
+\end{table}
+
+\begin{remark}
+The X-n101-k25 instance has near-zero slack ($\tau = 99.94\%$, total demand $= 5147$, $K \cdot Q = 5150$, slack $= 3$). No single greedy bin packing strategy succeeds --- only the BFD + Recursive Swap Repair finds a feasible packing. This validates the necessity of Strategy 4.
+\end{remark}
+
+%=============================================================================
+\section{Phase 2: 2-Opt Intra-Route Improvement}
+%=============================================================================
+
+After constructing $K$ feasible routes, we apply the classical \textbf{2-Opt} local search to improve the ordering of customers within each route independently.
+
+\subsection{2-Opt Move}
+
+A 2-opt move reverses a segment $[i, j]$ of the route. If the new route has lower cost, it replaces the current best.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[scale=1.0]
+% Before 2-opt
+\node at (-2.5, 2.2) {\textbf{Before}};
+\foreach \i/\x/\y/\label in {1/-4/0/A, 2/-2.5/1.2/B, 3/-1/1.2/C, 4/0.5/0/D} {
+    \node[circle,draw,fill=blue!20,minimum size=0.7cm,font=\small] (n\i) at (\x,\y) {\label};
+}
+\draw[->,thick] (n1) -- (n2);
+\draw[->,thick,red,dashed] (n2) -- (n3);
+\draw[->,thick] (n3) -- (n4);
+
+% Arrow
+\draw[->,very thick] (1.5,0.6) -- (2.5,0.6) node[midway,above,font=\scriptsize]{reverse};
+
+% After 2-opt
+\node at (5.5, 2.2) {\textbf{After}};
+\foreach \i/\x/\y/\label in {1/3/0/A, 2/4.5/1.2/C, 3/6/1.2/B, 4/7.5/0/D} {
+    \node[circle,draw,fill=blue!20,minimum size=0.7cm,font=\small] (m\i) at (\x,\y) {\label};
+}
+\draw[->,thick] (m1) -- (m2);
+\draw[->,thick,green!60!black] (m2) -- (m3);
+\draw[->,thick] (m3) -- (m4);
+\end{tikzpicture}
+\caption{A 2-opt move reverses the segment between positions $i$ and $j$.}
+\end{figure}
+
+\begin{algorithm}[H]
+\caption{2-Opt Improvement for Each Route}
+\begin{algorithmic}[1]
+\For{each route $R_v \in \mathcal{R}$}
+    \Repeat
+        \State improved $\gets$ False
+        \For{$i = 0$ to $|R_v| - 2$}
+            \For{$j = i + 1$ to $|R_v| - 1$}
+                \State $R' \gets$ reverse segment $[i, j]$ in $R_v$
+                \If{$\text{cost}(R') < \text{cost}(R_v)$}
+                    \State $R_v \gets R'$; \quad improved $\gets$ True
+                \EndIf
+            \EndFor
+        \EndFor
+    \Until{NOT improved}
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Complexity:} $O(|R_v|^2)$ per improvement pass, repeated until convergence.
+
+%=============================================================================
+\section{Phase 3: K-Nearest Neighbors Expansion}
+%=============================================================================
+
+The 2-opt-improved solution is a local optimum. To allow the Max-SAT solver to explore beyond this local optimum, we construct \textbf{restricted distance matrices} for each vehicle, including:
+\begin{enumerate}
+    \item All edges in the current route
+    \item For each customer in the route, its $K$ nearest neighbors (using MST and distance matrix)
+\end{enumerate}
+
+\subsection{MST-Based Neighbor Selection}
+
+We first compute a Minimum Spanning Tree (MST) of the full distance graph. Neighbors of customer $c$ in the MST are sorted by edge weight. If the MST provides fewer than $K$ neighbors, we fill the remaining slots from the distance matrix.
+
+\begin{algorithm}[H]
+\caption{K-Nearest Neighbors Matrix Construction}
+\begin{algorithmic}[1]
+\Require Instance, current routes $\mathcal{R}$, parameter $K$
+\Ensure Distance matrices $\{M_v\}$ for each vehicle $v$
+
+\State Compute MST of the full distance graph
+
+\For{each route $R_v$}
+    \State Initialize $M_v$ with $-1$ (all edges invalid)
+    \State Set $M_v[i,i] = 0$ for all $i$
+    
+    \Comment{Include current route edges}
+    \For{each consecutive pair $(c_i, c_{i+1})$ in $R_v$ (including depot links)}
+        \State $M_v[c_i, c_{i+1}] \gets d_{c_i, c_{i+1}}$
+        \State $M_v[c_{i+1}, c_i] \gets d_{c_{i+1}, c_i}$
+    \EndFor
+    
+    \Comment{Include K-nearest neighbor edges}
+    \For{each customer $c$ in $R_v$}
+        \State neighbors $\gets$ top-$K$ from MST $\cup$ distance matrix
+        \For{each $c' \in$ neighbors}
+            \State $M_v[c, c'] \gets d_{c, c'}$
+        \EndFor
+    \EndFor
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Key Insight:} Edges marked as $-1$ in $M_v$ are \emph{forbidden} for vehicle $v$. This restricts the Max-SAT solver's search space from $O(n^2)$ to $O(K \cdot n)$ edges per vehicle, making the problem tractable.
+
+%=============================================================================
+\section{Phase 4: Max-SAT Global Optimization}
+%=============================================================================
+
+The core optimization engine formulates CVRP as a \textbf{Weighted Partial Max-SAT} (equivalently, Pseudo-Boolean Optimization) problem and solves it using the \texttt{clasp} solver.
+
+\subsection{Boolean Variable Encoding}
+
+We define three types of Boolean variables:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ccl}
+\toprule
+\textbf{Variable} & \textbf{Type} & \textbf{Meaning} \\
+\midrule
+$w_{i,j,v}$ & Edge & Vehicle $v$ travels directly from node $i$ to node $j$ \\
+$t_{i,v}$ & Assignment & Customer $i$ is assigned to vehicle $v$ \\
+$u_{i,b,v}$ & Position (bit $b$) & Bit $b$ of the position of customer $i$ on vehicle $v$ \\
+\bottomrule
+\end{tabular}
+\caption{Boolean variables for the CVRP encoding.}
+\end{table}
+
+The position variable $u_{i,v}$ is encoded in binary with $\lceil \log_2(n-1) \rceil$ bits:
+\begin{equation}
+u_{i,v} = \sum_{b=0}^{B-1} 2^b \cdot u_{i,b,v}, \quad B = \lceil \log_2(n-1) \rceil
+\end{equation}
+
+\subsection{Hard Constraints}
+
+\subsubsection{Depot Constraints}
+
+Each vehicle leaves and returns to the depot exactly once:
+\begin{align}
+\sum_{j=1}^{n-1} w_{0,j,v} &= 1, \quad \forall v \tag{C1} \\
+\sum_{i=1}^{n-1} w_{i,0,v} &= 1, \quad \forall v \tag{C2}
+\end{align}
+
+\subsubsection{Customer Visit Constraints}
+
+Each customer is visited exactly once by exactly one vehicle:
+\begin{align}
+\sum_{v=1}^{K} \sum_{\substack{j=0 \\ j \neq i}}^{n-1} w_{i,j,v} &= 1, \quad \forall i \in \{1, \ldots, n-1\} \tag{C3: one exit} \\
+\sum_{v=1}^{K} \sum_{\substack{i=0 \\ i \neq j}}^{n-1} w_{i,j,v} &= 1, \quad \forall j \in \{1, \ldots, n-1\} \tag{C4: one entry}
+\end{align}
+
+\subsubsection{No Back-and-Forth}
+
+\begin{equation}
+\neg w_{i,j,v} \lor \neg w_{j,i,v}, \quad \forall i < j, \; \forall v \tag{C5}
+\end{equation}
+
+\subsubsection{Vehicle-Customer Assignment}
+
+If an edge on vehicle $v$ involves customer $i$, then $i$ is assigned to $v$:
+\begin{align}
+w_{i,j,v} &\Rightarrow t_{i,v} \quad \text{and} \quad w_{i,j,v} \Rightarrow t_{j,v}, \quad \forall i,j \geq 1, \; i \neq j \tag{C6--C7} \\
+w_{0,j,v} &\Rightarrow t_{j,v} \quad \text{and} \quad w_{i,0,v} \Rightarrow t_{i,v} \tag{C8--C9}
+\end{align}
+
+\subsubsection{Exclusive Assignment}
+
+Each customer belongs to at most one vehicle:
+\begin{equation}
+\neg t_{i,v} \lor \neg t_{i,v'}, \quad \forall i \geq 1, \; \forall v \neq v' \tag{C10}
+\end{equation}
+
+\subsubsection{Subtour Elimination (MTZ with Binary Encoding)}
+
+The Miller-Tucker-Zemlin (MTZ) constraints prevent subtours using position variables:
+\begin{equation}
+u_{i,v} - u_{j,v} + (n-1) \cdot w_{i,j,v} \leq n - 2, \quad \forall i,j \in \{1, \ldots, n-1\}, \; i \neq j, \; \forall v \tag{C11}
+\end{equation}
+
+\textbf{Interpretation:} If vehicle $v$ travels from $i$ to $j$ ($w_{i,j,v} = 1$), then $u_{j,v} \geq u_{i,v} + 1$, establishing a strict ordering that prevents cycles.
+
+In the binary encoding, this becomes a Pseudo-Boolean constraint:
+\begin{equation}
+\sum_{b=0}^{B-1} 2^b \cdot (-u_{i,b,v} + u_{j,b,v}) + (-(n-1)) \cdot w_{i,j,v} \geq -(n-2)
+\end{equation}
+
+\subsubsection{Capacity Constraint}
+
+\begin{equation}
+\sum_{i=1}^{n-1} q_i \cdot t_{i,v} \leq Q, \quad \forall v \tag{C12}
+\end{equation}
+
+Equivalently: $\sum_{i=0}^{n-1} (-q_i) \cdot t_{i,v} \geq -Q$
+
+\subsubsection{Search Space Restriction}
+
+Edges not in the K-neighbors matrix are forced to zero:
+\begin{equation}
+w_{i,j,v} = 0, \quad \forall (i,j,v) \text{ where } M_v[i,j] = -1 \tag{C13}
+\end{equation}
+
+\subsection{Objective Function (Soft Clauses)}
+
+The objective minimizes total travel distance:
+\begin{equation}
+\min \sum_{v=1}^{K} \sum_{i=0}^{n-1} \sum_{\substack{j=0 \\ j \neq i}}^{n-1} d_{i,j} \cdot w_{i,j,v}
+\end{equation}
+
+In PBO format, this is encoded as:
+\[
+\texttt{min: } \sum_{i,j,v} d_{i,j} \cdot x_{w_{i,j,v}}
+\]
+
+\subsection{Model Statistics}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Component} & \textbf{Count} & \textbf{Asymptotic} \\
+\midrule
+Edge variables $w_{i,j,v}$ & $K \cdot n \cdot (n-1)$ & $O(K n^2)$ \\
+Assignment variables $t_{i,v}$ & $K \cdot n$ & $O(Kn)$ \\
+Position bits $u_{i,b,v}$ & $K \cdot (n-1) \cdot \lceil \log_2(n-1) \rceil$ & $O(Kn \log n)$ \\
+\midrule
+Total variables & & $O(Kn^2)$ \\
+Total constraints & & $O(Kn^2 \log n)$ \\
+\bottomrule
+\end{tabular}
+\caption{Model size as a function of $n$ (number of nodes) and $K$ (number of vehicles).}
+\end{table}
+
+\subsection{Alternative: Lima Reachability Formulation}
+
+The solver also supports an alternative subtour elimination method based on \textbf{reachability variables} (Lima formulation), inspired by the RTSS approach:
+
+\begin{itemize}
+    \item Define $c_{i,j,v} = 1$ if customer $i$ is reachable before customer $j$ on vehicle $v$
+    \item \textbf{Base:} $w_{i,j,v} \Rightarrow c_{i,j,v}$
+    \item \textbf{Induction:} $w_{i,j,v} \wedge c_{j,k,v} \Rightarrow c_{i,k,v}$
+    \item \textbf{Acyclic:} $c_{i,i,v} = 0$ for all $i$
+\end{itemize}
+
+This avoids integer position variables at the cost of $O(n^3)$ transitivity constraints.
+
+\subsection{Solver Invocation}
+
+The model is written in OPB (Pseudo-Boolean) format and solved by the \texttt{clasp} PBO solver with a configurable time limit:
+
+\begin{lstlisting}[caption={Solver invocation}]
+def solve(self):
+    with open('input.txt', 'w+') as f:
+        f.write(self.encode())
+    
+    system('./clasp input.txt > output.txt --time-limit=80')
+    
+    with open('output.txt', 'r') as f:
+        self.decode(f.readlines())
+\end{lstlisting}
+
+%=============================================================================
+\section{Complete Pipeline}
+%=============================================================================
+
+\subsection{Entry Point}
+
+\begin{lstlisting}[caption={Main pipeline (run.py)}]
+cvrp = Instance(argv[1]).load()
+
+# Phase 1: Enhanced Clarke-Wright
+cw_time, routes = ClarkeWright.run(cvrp, int(argv[2]))
+
+# Phase 2: 2-Opt
+to_time, routes = TwoOpt.run(routes)
+
+cw_cost = sum(route.cost for route in routes.values())
+print(f'CW + 2-Opt cost: {cw_cost} ({cw_time + to_time:.3f}s)')
+
+# Phase 3: K-Nearest Neighbors
+_, matrices = KNeighbors.run(cvrp, int(argv[3]), routes)
+
+# Phase 4: Max-SAT Solver
+solver_time, solver_cost, solver_routes = Solver.run(cvrp, matrices)
+
+print(f'Solver cost: {solver_cost} ({solver_time:.3f}s)')
+print(f'Improvement: {(cw_cost - solver_cost) / cw_cost * 100:.2f}%')
+\end{lstlisting}
+
+\subsection{Data Flow}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    data/.style={ellipse, draw, fill=yellow!20, font=\small, minimum width=2cm, align=center},
+    proc/.style={rectangle, draw, fill=blue!15, font=\small, text width=3cm, text centered, minimum height=1cm, rounded corners, align=center},
+    arrow/.style={thick,->,>=stealth}
+]
+% Data nodes
+\node[data] (vrp) at (0, 4) {.vrp file};
+\node[data] (inst) at (0, 2.5) {Instance};
+
+% Process nodes
+\node[proc] (cw) at (-3, 0.5) {Clarke-Wright\\+ Reduction};
+\node[proc] (topt) at (0, 0.5) {2-Opt};
+\node[proc] (knn) at (3, 0.5) {K-Neighbors};
+\node[proc] (solver) at (6, 0.5) {clasp Solver};
+
+% Output
+\node[data] (result) at (6, -1.5) {Optimized\\routes};
+
+% Arrows
+\draw[arrow] (vrp) -- (inst);
+\draw[arrow] (inst) -| (cw);
+\draw[arrow] (cw) -- node[above, font=\scriptsize]{$K$ routes} (topt);
+\draw[arrow] (topt) -- node[above, font=\scriptsize]{improved} (knn);
+\draw[arrow] (knn) -- node[above, font=\scriptsize]{matrices} (solver);
+\draw[arrow] (solver) -- (result);
+
+\end{tikzpicture}
+\caption{Data flow through the pipeline.}
+\end{figure}
+
+%=============================================================================
+\section{Implementation Architecture}
+%=============================================================================
+
+\subsection{Module Overview}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lp{9cm}}
+\toprule
+\textbf{Module} & \textbf{Responsibility} \\
+\midrule
+\texttt{classes/instance.py} & Parse VRP files (supports EUC\_2D, ATT, EXPLICIT distance types); compute distance matrix \\
+\texttt{classes/route.py} & Route data structure with lazy demand/cost caching \\
+\texttt{classes/clarke\_wright.py} & Enhanced CW algorithm with 4-strategy reduction and sweep fallback \\
+\texttt{classes/two\_opt.py} & Intra-route 2-opt improvement \\
+\texttt{classes/k\_neighbors.py} & MST-based K-nearest neighbor matrix construction \\
+\texttt{classes/solver.py} & PBO encoding and \texttt{clasp} solver interface \\
+\texttt{classes/utils.py} & Timer decorator and utility functions \\
+\texttt{run.py} & Main entry point for the 4-phase pipeline \\
+\bottomrule
+\end{tabular}
+\caption{Project modules and their responsibilities.}
+\end{table}
+
+\subsection{Route Data Structure}
+
+The \texttt{Route} class provides lazy caching for demand and cost:
+
+\begin{lstlisting}[caption={Route class with lazy caching}]
+class Route:
+    def __init__(self, cvrp, value, demand=-1):
+        self.cvrp = cvrp
+        self.value = value   # List of customer indices
+        self._demand = demand  # Cached demand (-1 = recompute)
+        self._cost = -1        # Cached cost (-1 = recompute)
+    
+    @property
+    def demand(self):
+        if self._demand < 0:
+            self._demand = sum(self.cvrp.demands[c] for c in self.value)
+        return self._demand
+    
+    @property
+    def cost(self):
+        if self._cost < 0:
+            self._cost = self.cvrp.distances[0, self.value[0]]
+            for i in range(len(self.value) - 1):
+                self._cost += self.cvrp.distances[self.value[i], self.value[i+1]]
+            self._cost += self.cvrp.distances[self.value[-1], 0]
+        return self._cost
+\end{lstlisting}
+
+\subsection{Instance Format}
+
+The solver reads standard TSPLIB-format \texttt{.vrp} files:
+
+\begin{verbatim}
+NAME : B-n31-k5
+COMMENT : (Augerat, 1995)
+TYPE : CVRP
+DIMENSION : 31
+EDGE_WEIGHT_TYPE : EUC_2D
+CAPACITY : 100
+NODE_COORD_SECTION
+ 1  82  76
+ 2  96  44
+ ...
+DEMAND_SECTION
+ 1  0
+ 2  19
+ ...
+DEPOT_SECTION
+ 1
+ -1
+EOF
+\end{verbatim}
+
+Supported distance types: \texttt{EUC\_2D} (Euclidean), \texttt{ATT} (pseudo-Euclidean), \texttt{EXPLICIT} (given matrix in \texttt{LOWER\_ROW} or \texttt{LOWER\_COL} format).
+
+%=============================================================================
+\section{Theoretical Analysis}
+%=============================================================================
+
+\subsection{Correctness of Route Reduction}
+
+\begin{theorem}[Soundness]
+Every route set produced by the enhanced CW algorithm is a feasible CVRP solution: each customer is served exactly once, each route starts and ends at the depot, and every route respects the capacity constraint $Q$.
+\end{theorem}
+
+\begin{proof}
+\begin{enumerate}
+    \item \textbf{Customer coverage:} The initial routes contain every customer. All strategies only move customers between routes or reassign them to bins --- no customer is ever dropped.
+    \item \textbf{Capacity:} Every merge (Strategy 1, 2) checks $\text{demand}(R_a) + \text{demand}(R_b) \leq Q$ before merging. Every insertion (Strategy 3) checks $\text{demand}(R_t) + q_c \leq Q$ before inserting. Strategy 4 checks $\text{load}(b) + q_c \leq Q$ before placement.
+    \item \textbf{Undo safety:} Strategies 2 and 3 perform full rollback on failure, restoring the original route configuration.
+\end{enumerate}
+\end{proof}
+
+\begin{theorem}[Completeness of Max-SAT Model]
+If a feasible improvement to the current solution exists within the K-neighbors search space, the \texttt{clasp} solver will find the optimal such improvement.
+\end{theorem}
+
+\begin{proof}
+The PBO model correctly encodes all CVRP constraints (Hamiltonian routes with capacity limits). The search space is complete within the edges defined by the K-neighbors matrices. The \texttt{clasp} solver is an exact PBO solver that finds the optimum of the encoded problem (subject to the time limit).
+\end{proof}
+
+\subsection{Complexity Summary}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Phase} & \textbf{Time Complexity} & \textbf{Typical Runtime} \\
+\midrule
+CW: Savings computation & $O(n^2)$ & $< 0.001$s \\
+CW: Merge phase & $O(n^2 \log n)$ & $< 0.001$s \\
+CW: Route reduction & $O(n^3)$ (Strategies 1--3) & $< 0.01$s \\
+CW: Bin packing (Strategy 4) & $O((nK)^d)$ worst case & $< 0.2$s \\
+2-Opt & $O(\sum_v |R_v|^3)$ & $< 0.1$s \\
+K-Neighbors & $O(n^2 \log n)$ (MST) & $< 0.5$s \\
+Max-SAT (clasp) & NP-hard & $\leq 80$s (time limit) \\
+\bottomrule
+\end{tabular}
+\caption{Complexity and typical runtime per phase.}
+\end{table}
+
+%=============================================================================
+\section{Usage}
+%=============================================================================
+
+\subsection{Requirements}
+
+\begin{itemize}
+    \item Python $\geq 3.10$ (uses \texttt{match} statements)
+    \item \texttt{numpy} --- distance matrices and demand arrays
+    \item \texttt{networkx} --- minimum spanning tree computation
+    \item \texttt{clasp} --- PBO solver binary (must be in the project root)
+\end{itemize}
+
+\subsection{Running the Pipeline}
+
+\begin{verbatim}
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the full pipeline
+# Usage: python run.py <instance> <vehicle_number> <neighbor_number>
+
+python run.py instances/A-n33-k6.vrp 6 5
+python run.py instances/B/B-n45-k6.vrp 6 5
+python run.py X-n101-k25.vrp 25 5
+\end{verbatim}
+
+\subsection{Output}
+
+\begin{verbatim}
+CW + 2-Opt cost: 846 (0.001s)
+CW + 2-Opt routes: [Route[...], Route[...], ...]
+Solver cost: 780 (45.2s)
+Solver routes: [w_0_5_0, w_5_12_0, ...]
+Improvement: 7.80%
+\end{verbatim}
+
+%=============================================================================
+\section{Conclusion}
+%=============================================================================
+
+This document presented a complete post-improvement pipeline for CVRP that combines constructive heuristics with exact optimization:
+
+\begin{enumerate}
+    \item \textbf{Enhanced Clarke-Wright} with four-strategy route reduction (direct merge, relocate-and-merge, dissolve, BFD+swap) and sweep fallback ensures reliable initial solution construction for all instance types, including those with 100\% capacity tightness.
+    
+    \item \textbf{2-Opt local search} quickly improves the initial route orderings.
+    
+    \item \textbf{K-Nearest Neighbors} using MST defines a tractable search space for the exact solver.
+    
+    \item \textbf{Max-SAT/PBO solver} (\texttt{clasp}) performs global optimization within the restricted search space, using MTZ subtour elimination with binary position encoding.
+\end{enumerate}
+
+The key algorithmic contribution is the \textbf{BFD + Recursive Swap Repair} mechanism in Strategy 4, which solves the NP-hard bin packing sub-problem arising in extremely tight instances. By combining BFD pre-placement with bounded-depth recursive swaps, the algorithm achieves sub-second performance while finding feasible packings that no greedy heuristic can produce.
+
+\end{document}

@@ -148,7 +148,6 @@ def main():
     ]
 
     with open(result_file, mode="w", newline="", encoding="utf-8") as csv_file:
-
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()
 
@@ -168,16 +167,13 @@ def main():
             times = []
             params_list = []
 
-            n_runs = 1
+            n_runs = 5
 
             for run in range(n_runs):
 
                 try:
-
                     start_time = time.time()
-
                     routes, cost, params = run_solver_wrapper(filepath)
-
                     elapsed = time.time() - start_time
 
                     if elapsed > TIMEOUT_LIMIT:
@@ -209,7 +205,6 @@ def main():
                     if data["bks"] > 0
                     else 0
                 )
-
                 gap_str = f"{gap:.2f}" if data["bks"] > 0 else "?"
 
                 best_idx = costs.index(best_c)

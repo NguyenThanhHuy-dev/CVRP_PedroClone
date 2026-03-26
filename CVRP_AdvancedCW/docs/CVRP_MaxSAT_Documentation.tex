@@ -1,0 +1,833 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[vietnamese,english]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning,calc,decorations.pathreplacing}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{float}
+\geometry{margin=2.5cm}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{example}{Example}[section]
+
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny,
+    breaklines=true,
+    frame=single,
+    showstringspaces=false
+}
+
+\title{\textbf{Post-Improvement of Capacitated Vehicle Routing Problem\\Using Weighted Partial Max-SAT}\\[1em]
+\large Technical Documentation}
+\author{Based on: Ferreira \& Arruda (2024)}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+%=============================================================================
+\section{Introduction}
+%=============================================================================
+
+\subsection{Problem Overview}
+
+The Capacitated Vehicle Routing Problem (CVRP) is a fundamental combinatorial optimization problem in logistics and transportation. Given a fleet of vehicles with limited capacity stationed at a depot, the goal is to determine optimal routes to serve a set of customers with known demands while minimizing total travel distance.
+
+\subsection{Approach Summary}
+
+This document describes a \textbf{post-improvement approach} that combines:
+\begin{enumerate}
+    \item \textbf{Clarke-Wright Savings Algorithm}: Constructs an initial feasible solution
+    \item \textbf{2-Opt Local Search}: Improves each route individually
+    \item \textbf{K-Nearest Neighbors}: Expands the search space
+    \item \textbf{Max-SAT Solver (clasp)}: Performs global optimization
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    block/.style={rectangle, draw, fill=blue!20, text width=3.5cm, text centered, minimum height=1.2cm, rounded corners},
+    arrow/.style={thick,->,>=stealth}
+]
+\node[block] (cw) {Clarke-Wright\\Savings Algorithm};
+\node[block, right=1.5cm of cw] (opt) {2-Opt\\Improvement};
+\node[block, right=1.5cm of opt] (knn) {K-Nearest\\Neighbors};
+\node[block, right=1.5cm of knn] (sat) {Max-SAT\\Solver (clasp)};
+
+\draw[arrow] (cw) -- node[above]{\small routes} (opt);
+\draw[arrow] (opt) -- node[above]{\small improved} (knn);
+\draw[arrow] (knn) -- node[above]{\small matrices} (sat);
+
+\node[below=0.3cm of cw] {\small Initial Solution};
+\node[below=0.3cm of opt] {\small Local Search};
+\node[below=0.3cm of knn] {\small Space Expansion};
+\node[below=0.3cm of sat] {\small Global Optimization};
+\end{tikzpicture}
+\caption{Pipeline of the CVRP Post-Improvement Approach}
+\end{figure}
+
+%=============================================================================
+\section{Problem Formulation}
+%=============================================================================
+
+\subsection{Formal Definition}
+
+\begin{definition}[Capacitated Vehicle Routing Problem]
+Let $G = (V, E)$ be an undirected graph where:
+\begin{itemize}
+    \item $V = \{1, 2, \ldots, n\}$ is the set of vertices
+    \item Node 1 represents the \textbf{depot}
+    \item Nodes $\{2, \ldots, n\}$ represent \textbf{customer locations}
+    \item Each customer $i$ has demand $q_i \geq 0$
+    \item Each edge $(i,j) \in E$ has cost $d_{ij}$ (distance)
+    \item Fleet of $m$ vehicles, each with capacity $Q$
+\end{itemize}
+
+\textbf{Objective}: Partition customers into $m$ routes, each starting and ending at depot, such that:
+\begin{itemize}
+    \item Total demand per route $\leq Q$
+    \item Total travel distance is minimized
+\end{itemize}
+\end{definition}
+
+\subsection{Mathematical Model}
+
+\textbf{Objective Function:}
+\begin{equation}
+\min \sum_{i=1}^{n} \sum_{j=1}^{n} \sum_{v=1}^{m} d_{ij} \cdot w_{ijv}
+\end{equation}
+
+where $w_{ijv} = 1$ if vehicle $v$ travels directly from customer $i$ to customer $j$.
+
+%=============================================================================
+\section{Phase 1: Clarke-Wright Savings Algorithm}
+%=============================================================================
+
+\subsection{Algorithm Description}
+
+The Clarke-Wright Savings Algorithm is a greedy heuristic that builds routes by merging customer pairs based on ``savings'' values.
+
+\begin{definition}[Savings Value]
+For customers $i, j \neq 1$ (depot), the savings from merging routes serving $i$ and $j$ is:
+\begin{equation}
+s_{ij} = d_{1i} + d_{1j} - d_{ij}
+\end{equation}
+\end{definition}
+
+\textbf{Interpretation:} Instead of two separate round-trips (depot $\to i \to$ depot and depot $\to j \to$ depot), we combine into one route (depot $\to i \to j \to$ depot), saving distance $s_{ij}$.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[scale=1.2]
+% Before merging
+\node[circle,draw,fill=red!30] (d1) at (0,0) {D};
+\node[circle,draw,fill=blue!30] (i1) at (-1.5,1.5) {$i$};
+\node[circle,draw,fill=blue!30] (j1) at (1.5,1.5) {$j$};
+
+\draw[->,thick] (d1) -- (i1);
+\draw[->,thick] (i1) -- (d1);
+\draw[->,thick] (d1) -- (j1);
+\draw[->,thick] (j1) -- (d1);
+
+\node at (0,-0.8) {Before: $2d_{1i} + 2d_{1j}$};
+
+% After merging
+\node[circle,draw,fill=red!30] (d2) at (5,0) {D};
+\node[circle,draw,fill=blue!30] (i2) at (3.5,1.5) {$i$};
+\node[circle,draw,fill=blue!30] (j2) at (6.5,1.5) {$j$};
+
+\draw[->,thick,green!60!black] (d2) -- (i2);
+\draw[->,thick,green!60!black] (i2) -- (j2);
+\draw[->,thick,green!60!black] (j2) -- (d2);
+
+\node at (5,-0.8) {After: $d_{1i} + d_{ij} + d_{1j}$};
+
+\draw[decorate,decoration={brace,amplitude=10pt,mirror}] (-2,-1.5) -- (7,-1.5) 
+    node[midway,below=12pt] {Savings: $s_{ij} = d_{1i} + d_{1j} - d_{ij}$};
+\end{tikzpicture}
+\caption{Illustration of Savings Concept}
+\end{figure}
+
+\subsection{Algorithm Steps}
+
+\begin{algorithm}[H]
+\caption{Clarke-Wright Savings Algorithm (Modified for CVRP)}
+\begin{algorithmic}[1]
+\Require Graph $G$, demands $q_i$, capacity $Q$, number of vehicles $m$
+\Ensure Set of routes $\mathcal{R}$
+
+\State \textbf{Step 1: Compute Savings}
+\For{$i = 2$ to $n$}
+    \For{$j = i+1$ to $n$}
+        \State $s_{ij} \gets d_{1i} + d_{1j} - d_{ij}$
+    \EndFor
+\EndFor
+\State Sort savings in descending order
+
+\State \textbf{Step 2: Initialize Routes}
+\For{each customer $i \in \{2, \ldots, n\}$}
+    \State Create route $R_i = [i]$ with demand $q_i$
+\EndFor
+
+\State \textbf{Step 3: Merge Routes}
+\For{each $(s_{ij}, i, j)$ in sorted savings list}
+    \If{$i$ and $j$ are in different routes $R_i$ and $R_j$}
+        \If{$i$ is at end of $R_i$ AND $j$ is at start of $R_j$}
+            \If{demand($R_i$) + demand($R_j$) $\leq Q$}
+                \State Merge: $R_i \gets R_i \cup R_j$
+                \State Delete $R_j$
+            \EndIf
+        \EndIf
+    \EndIf
+\EndFor
+
+\State \textbf{Step 4: Reduce Routes} (if $|\mathcal{R}| > m$)
+\While{$|\mathcal{R}| > m$}
+    \State Try to redistribute customers from smallest route
+\EndWhile
+
+\State \Return $\mathcal{R}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Implementation Details}
+
+\begin{lstlisting}[caption={Clarke-Wright Savings Computation}]
+def load_savings(self):
+    '''Compute savings for all customer pairs'''
+    for i in range(1, self.cvrp.dimension):
+        for j in range(i + 1, self.cvrp.dimension):
+            # s_ij = d_1i + d_1j - d_ij
+            saving = (self.cvrp.distances[0, i] + 
+                     self.cvrp.distances[0, j] - 
+                     self.cvrp.distances[i, j])
+            self.savings.append((saving, i, j))
+    
+    # Sort in descending order
+    self.savings.sort(key=lambda x: x[0], reverse=True)
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Route Merging with Capacity Constraint}]
+def combine_routes(self):
+    '''Merge routes based on savings'''
+    for saving, i, j in self.savings:
+        if i not in self.routes or j not in self.routes:
+            continue
+        if self.routes[i] == self.routes[j]:
+            continue
+        
+        # Ensure i is at end and j is at start
+        if self.routes[i][0] == i:
+            self.routes[i] = self.routes[i].reversed()
+        if self.routes[j][-1] == j:
+            self.routes[j] = self.routes[j].reversed()
+            
+        if self.routes[i][-1] != i or self.routes[j][0] != j:
+            continue
+        
+        # Check capacity constraint
+        if self.routes[i].demand + self.routes[j].demand > self.cvrp.capacity:
+            continue
+        
+        # Merge routes
+        self.routes[i] += self.routes[j]
+        del self.routes[j]
+\end{lstlisting}
+
+%=============================================================================
+\section{Phase 2: 2-Opt Local Search}
+%=============================================================================
+
+\subsection{Algorithm Description}
+
+The 2-Opt algorithm improves a route by iteratively removing two edges and reconnecting the tour in a different way.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[scale=1.0]
+% Before 2-opt
+\node at (-3, 2) {\textbf{Before 2-Opt}};
+\node[circle,draw,fill=blue!30] (a1) at (-4,0) {A};
+\node[circle,draw,fill=blue!30] (b1) at (-3,1) {B};
+\node[circle,draw,fill=blue!30] (c1) at (-2,1) {C};
+\node[circle,draw,fill=blue!30] (d1) at (-1,0) {D};
+
+\draw[->,thick] (a1) -- (b1);
+\draw[->,thick,red] (b1) -- (c1);
+\draw[->,thick] (c1) -- (d1);
+
+% Arrow
+\draw[->,very thick] (0.5,0.5) -- (1.5,0.5);
+
+% After 2-opt
+\node at (4, 2) {\textbf{After 2-Opt}};
+\node[circle,draw,fill=blue!30] (a2) at (2,0) {A};
+\node[circle,draw,fill=blue!30] (b2) at (3,1) {B};
+\node[circle,draw,fill=blue!30] (c2) at (4,1) {C};
+\node[circle,draw,fill=blue!30] (d2) at (5,0) {D};
+
+\draw[->,thick] (a2) -- (c2);
+\draw[->,thick,green!60!black] (c2) -- (b2);
+\draw[->,thick] (b2) -- (d2);
+
+\node at (0,-1.5) {Segment [B, C] is reversed};
+\end{tikzpicture}
+\caption{2-Opt Move: Reverse segment between positions $i$ and $j$}
+\end{figure}
+
+\subsection{Algorithm}
+
+\begin{algorithm}[H]
+\caption{2-Opt Improvement}
+\begin{algorithmic}[1]
+\Require Route $R = [v_1, v_2, \ldots, v_k]$
+\Ensure Improved route $R^*$
+
+\State $R^* \gets R$
+\Repeat
+    \State improved $\gets$ False
+    \For{$i = 0$ to $|R| - 2$}
+        \For{$j = i + 1$ to $|R| - 1$}
+            \State $R' \gets$ Reverse segment $[i, j]$ in $R^*$
+            \If{cost($R'$) $<$ cost($R^*$)}
+                \State $R^* \gets R'$
+                \State improved $\gets$ True
+            \EndIf
+        \EndFor
+    \EndFor
+\Until{NOT improved}
+\State \Return $R^*$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Implementation}
+
+\begin{lstlisting}[caption={2-Opt Implementation}]
+def improve_routes(self):
+    '''Apply 2-opt to each route'''
+    for idx in self.routes:
+        best_route = self.routes[idx]
+        route = best_route
+        
+        while True:
+            improved = False
+            for i in range(len(route) - 1):
+                for j in range(i + 1, len(route)):
+                    # Reverse segment [i, j+1]
+                    new_route = route.reversed(i, j + 1)
+                    if new_route.cost < best_route.cost:
+                        best_route = new_route
+                        improved = True
+            
+            route = best_route
+            if not improved:
+                break
+        
+        self.routes[idx] = route
+\end{lstlisting}
+
+%=============================================================================
+\section{Phase 3: K-Nearest Neighbors Expansion}
+%=============================================================================
+
+\subsection{Motivation}
+
+After 2-Opt, the solution is locally optimal but may be far from the global optimum. To enable the SAT solver to explore beyond the current solution, we expand the search space by adding K-nearest neighbors for each customer.
+
+\subsection{Algorithm}
+
+\begin{algorithm}[H]
+\caption{K-Nearest Neighbors Selection}
+\begin{algorithmic}[1]
+\Require Instance $I$, routes $\mathcal{R}$, parameter $K$
+\Ensure Distance matrices $\{M_v\}$ for each vehicle $v$
+
+\State Compute Minimum Spanning Tree (MST) of full graph
+
+\For{each route $R_v$ in $\mathcal{R}$}
+    \State Initialize matrix $M_v$ with $-1$ (invalid edges)
+    
+    \Comment{Add edges from current route}
+    \For{each consecutive pair $(i, j)$ in $R_v$}
+        \State $M_v[i,j] \gets d_{ij}$
+        \State $M_v[j,i] \gets d_{ji}$
+    \EndFor
+    
+    \Comment{Add K-nearest neighbors for each customer}
+    \For{each customer $c$ in $R_v$}
+        \State neighbors $\gets$ K-nearest from MST
+        \If{$|$neighbors$| < K$}
+            \State Fill remaining from distance matrix
+        \EndIf
+        \For{each neighbor $n$ in neighbors}
+            \State $M_v[c,n] \gets d_{cn}$
+            \State $M_v[n,c] \gets d_{nc}$
+        \EndFor
+    \EndFor
+\EndFor
+
+\State \Return $\{M_v\}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Implementation}
+
+\begin{lstlisting}[caption={K-Nearest Neighbors using MST}]
+def load_mst(self):
+    '''Build Minimum Spanning Tree'''
+    graph = Graph()
+    for i in range(self.cvrp.dimension):
+        for j in range(self.cvrp.dimension):
+            graph.add_edge(i, j, weight=self.cvrp.distances[i, j])
+    self.mst = minimum_spanning_tree(graph)
+
+def nearest_neighbors_mst(self, customer: int) -> list[int]:
+    '''Get K nearest neighbors from MST'''
+    neighbors = list(self.mst.neighbors(customer))
+    weights = [self.mst.get_edge_data(customer, n)['weight'] 
+               for n in neighbors]
+    sorted_neighbors = [n for _, n in sorted(zip(weights, neighbors))]
+    return sorted_neighbors[:self.neighbor_number]
+
+def load_matrices(self):
+    '''Create distance matrices with K-neighbors'''
+    for idx in self.routes:
+        route = self.routes[idx]
+        matrix = np.full((self.cvrp.dimension, self.cvrp.dimension), 
+                        -1, dtype=int)
+        
+        # Add current route edges
+        for i in range(self.cvrp.dimension):
+            matrix[i, i] = 0
+        
+        matrix[0, route[0]] = self.cvrp.distances[0, route[0]]
+        for i in range(len(route) - 1):
+            matrix[route[i], route[i+1]] = self.cvrp.distances[route[i], route[i+1]]
+        matrix[0, route[-1]] = self.cvrp.distances[0, route[-1]]
+        
+        # Add K-nearest neighbors
+        for customer in route:
+            for neighbor in self.nearest_neighbors(customer):
+                matrix[customer, neighbor] = self.cvrp.distances[customer, neighbor]
+        
+        self.matrices[idx] = matrix
+\end{lstlisting}
+
+%=============================================================================
+\section{Phase 4: Max-SAT Logical Modeling}
+%=============================================================================
+
+\subsection{Boolean Variables}
+
+The CVRP is encoded using three types of Boolean variables:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|c|p{8cm}|}
+\hline
+\textbf{Variable} & \textbf{Meaning} \\
+\hline
+$w_{ijv}$ & Vehicle $v$ travels directly from customer $i$ to customer $j$ \\
+\hline
+$t_{iv}$ & Customer $i$ is assigned to vehicle $v$ \\
+\hline
+$u_{iv}$ & Position of customer $i$ in route of vehicle $v$ (for subtour elimination) \\
+\hline
+\end{tabular}
+\caption{Boolean Variables for CVRP Encoding}
+\end{table}
+
+\textbf{Binary Encoding of Position Variables:}
+
+To encode the integer position $u_{iv}$ in binary form:
+\begin{equation}
+u_{iv} = \sum_{b=0}^{\lceil\log_2(n-1)\rceil - 1} 2^b \cdot u_{ibv}
+\end{equation}
+
+where $u_{ibv}$ are Boolean variables representing bits.
+
+\subsection{Constraint Formulation}
+
+\subsubsection{Depot Constraints}
+
+Each vehicle must leave and return to the depot exactly once:
+
+\begin{equation}
+\sum_{j=2}^{n} w_{1jv} = 1, \quad \forall v \in \{1, \ldots, m\} \tag{C1: Leave depot}
+\end{equation}
+
+\begin{equation}
+\sum_{i=2}^{n} w_{i1v} = 1, \quad \forall v \in \{1, \ldots, m\} \tag{C2: Return to depot}
+\end{equation}
+
+\subsubsection{Customer Visit Constraints}
+
+Each customer must be visited exactly once by exactly one vehicle:
+
+\begin{equation}
+\sum_{j=1}^{n} \sum_{v=1}^{m} w_{ijv} = 1, \quad \forall i \in \{2, \ldots, n\}, i \neq j \tag{C3: One exit}
+\end{equation}
+
+\begin{equation}
+\sum_{i=1}^{n} \sum_{v=1}^{m} w_{ijv} = 1, \quad \forall j \in \{2, \ldots, n\}, i \neq j \tag{C4: One entry}
+\end{equation}
+
+\subsubsection{No Revisit Constraint}
+
+A vehicle cannot visit the same customer twice:
+
+\begin{equation}
+\neg w_{ijv} \vee \neg w_{jiv}, \quad \forall i < j, \forall v \tag{C5: No back-and-forth}
+\end{equation}
+
+In linear form: $-w_{ijv} - w_{jiv} \geq -1$
+
+\subsubsection{Vehicle-Customer Assignment Constraints}
+
+If vehicle $v$ travels from $i$ to $j$, then both customers are assigned to $v$:
+
+\begin{equation}
+w_{ijv} \Rightarrow t_{iv}, \quad \forall i, j \in \{2, \ldots, n\}, i \neq j, \forall v \tag{C6}
+\end{equation}
+
+\begin{equation}
+w_{ijv} \Rightarrow t_{jv}, \quad \forall i, j \in \{2, \ldots, n\}, i \neq j, \forall v \tag{C7}
+\end{equation}
+
+In linear form: $-w_{ijv} + t_{iv} \geq 0$ and $-w_{ijv} + t_{jv} \geq 0$
+
+\subsubsection{Exclusive Assignment Constraint}
+
+Each customer is assigned to exactly one vehicle:
+
+\begin{equation}
+\neg t_{iv} \vee \neg t_{il}, \quad \forall i \in \{2, \ldots, n\}, \forall v \neq l \tag{C8}
+\end{equation}
+
+\subsubsection{Depot-Customer Link Constraints}
+
+\begin{equation}
+w_{1jv} \Rightarrow t_{jv}, \quad \forall j \in \{2, \ldots, n\}, \forall v \tag{C9: After leaving depot}
+\end{equation}
+
+\begin{equation}
+w_{i1v} \Rightarrow t_{iv}, \quad \forall i \in \{2, \ldots, n\}, \forall v \tag{C10: Before returning}
+\end{equation}
+
+\subsubsection{Subtour Elimination (MTZ Formulation)}
+
+Miller-Tucker-Zemlin constraints prevent subtours:
+
+\begin{equation}
+u_{iv} - u_{jv} + (n-1) \cdot w_{ijv} \leq n-2, \quad \forall i, j \in \{2, \ldots, n\}, i \neq j, \forall v \tag{C11}
+\end{equation}
+
+\textbf{Interpretation:} If $w_{ijv} = 1$ (vehicle $v$ goes from $i$ to $j$), then $u_{jv} \geq u_{iv} + 1$, ensuring a linear ordering of visited customers.
+
+\subsubsection{Capacity Constraint}
+
+\begin{equation}
+\sum_{i=1}^{n} q_i \cdot t_{iv} \leq Q, \quad \forall v \in \{1, \ldots, m\} \tag{C12}
+\end{equation}
+
+\subsection{Objective Function (Soft Clauses)}
+
+The objective is to minimize total travel distance:
+
+\begin{equation}
+\min \sum_{i=1}^{n} \sum_{j=1}^{n} \sum_{v=1}^{m} d_{ij} \cdot w_{ijv}
+\end{equation}
+
+In Max-SAT, this is encoded as soft clauses:
+\begin{itemize}
+    \item For each $w_{ijv}$, add soft clause $(\neg w_{ijv}, d_{ij})$
+    \item Satisfying the clause (not using edge) adds $d_{ij}$ to the objective
+    \item Falsifying the clause (using edge) incurs penalty $d_{ij}$
+\end{itemize}
+
+\subsection{Search Space Restriction}
+
+Edges not in the K-neighbors matrix are forced to be false:
+
+\begin{equation}
+w_{ijv} = 0, \quad \forall (i,j) \text{ where } M_v[i,j] = -1
+\end{equation}
+
+This dramatically reduces the search space.
+
+\subsection{Implementation}
+
+\begin{lstlisting}[caption={Loading Model Constraints}]
+def load_model(self):
+    '''Encode CVRP as Max-SAT'''
+    bytes_size = ceil(log2(self.cvrp.dimension - 1))
+    
+    # C1: Each vehicle leaves depot by one customer
+    for v in range(len(self.matrices)):
+        w_0_j_v = [self.get(f'w_0_{j}_{v}') 
+                   for j in range(1, self.cvrp.dimension)]
+        self.add_constraint_eq(None, w_0_j_v, 1)
+    
+    # C2: Each vehicle enters depot by one customer
+    for v in range(len(self.matrices)):
+        w_i_0_v = [self.get(f'w_{i}_0_{v}') 
+                   for i in range(1, self.cvrp.dimension)]
+        self.add_constraint_eq(None, w_i_0_v, 1)
+    
+    # C3: Customer leaves to exactly one customer by one vehicle
+    for i in range(1, self.cvrp.dimension):
+        w_i_j_v = []
+        for v in range(len(self.matrices)):
+            w_i_j_v += [self.get(f'w_{i}_{j}_{v}') 
+                        for j in range(self.cvrp.dimension) if i != j]
+        self.add_constraint_eq(None, w_i_j_v, 1)
+    
+    # C4: Customer entered by exactly one customer by one vehicle
+    for j in range(1, self.cvrp.dimension):
+        w_i_j_v = []
+        for v in range(len(self.matrices)):
+            w_i_j_v += [self.get(f'w_{i}_{j}_{v}') 
+                        for i in range(self.cvrp.dimension) if i != j]
+        self.add_constraint_eq(None, w_i_j_v, 1)
+    
+    # C5: No back-and-forth
+    for i in range(1, self.cvrp.dimension):
+        for j in range(i + 1, self.cvrp.dimension):
+            for v in range(len(self.matrices)):
+                w_i_j_v = self.get(f'w_{i}_{j}_{v}')
+                w_j_i_v = self.get(f'w_{j}_{i}_{v}')
+                self.add_constraint_geq(None, [-w_i_j_v, -w_j_i_v], 1)
+    
+    # ... (C6-C10 similar pattern)
+    
+    # C11: Subtour Elimination (MTZ)
+    exp = [2**b for b in range(bytes_size)]
+    neg_exp = [-item for item in exp]
+    u_factors = neg_exp + exp + [-self.cvrp.dimension + 1]
+    u_value = -self.cvrp.dimension + 2
+    
+    for v in range(len(self.matrices)):
+        for i in range(1, self.cvrp.dimension):
+            for j in range(1, self.cvrp.dimension):
+                if i == j:
+                    continue
+                u_i_v = [self.get(f'u_{i}_{b}_{v}') for b in range(bytes_size)]
+                u_j_v = [self.get(f'u_{j}_{b}_{v}') for b in range(bytes_size)]
+                w_i_j_v = self.get(f'w_{i}_{j}_{v}')
+                u_clause = u_i_v + u_j_v + [w_i_j_v]
+                self.add_constraint_geq(u_factors, u_clause, u_value)
+    
+    # C12: Capacity constraint
+    neg_demands = [-demand for demand in self.cvrp.demands]
+    for v in range(len(self.matrices)):
+        t_i_v = [self.get(f't_{i}_{v}') for i in range(self.cvrp.dimension)]
+        self.add_constraint_geq(neg_demands, t_i_v, -self.cvrp.capacity)
+    
+    # Restrict search space (invalid edges = 0)
+    w_invalid = []
+    for v in range(len(self.matrices)):
+        for i in range(self.cvrp.dimension):
+            for j in range(self.cvrp.dimension):
+                if i != j and self.matrices[v][i, j] == -1:
+                    w_invalid.append(self.get(f'w_{i}_{j}_{v}'))
+    self.add_constraint_eq(None, w_invalid, 0)
+    
+    # Objective: minimize total distance
+    for v in range(len(self.matrices)):
+        for i in range(self.cvrp.dimension):
+            for j in range(self.cvrp.dimension):
+                if i != j:
+                    w_i_j_v = self.get(f'w_{i}_{j}_{v}')
+                    self.add_objective(self.cvrp.distances[i, j], w_i_j_v)
+\end{lstlisting}
+
+%=============================================================================
+\section{Complete Pipeline}
+%=============================================================================
+
+\begin{algorithm}[H]
+\caption{Complete CVRP Post-Improvement Pipeline}
+\begin{algorithmic}[1]
+\Require Instance file, number of vehicles $m$, number of neighbors $K$
+\Ensure Optimized routes and total cost
+
+\State \textbf{Phase 1: Load Instance}
+\State $I \gets$ LoadInstance(instance\_file)
+
+\State \textbf{Phase 2: Clarke-Wright}
+\State $\mathcal{R} \gets$ ClarkeWright($I$, $m$)
+\State $cost_{CW} \gets \sum_{R \in \mathcal{R}} \text{cost}(R)$
+
+\State \textbf{Phase 3: 2-Opt Improvement}
+\For{each route $R$ in $\mathcal{R}$}
+    \State $R \gets$ TwoOpt($R$)
+\EndFor
+\State $cost_{2opt} \gets \sum_{R \in \mathcal{R}} \text{cost}(R)$
+
+\State \textbf{Phase 4: K-Nearest Neighbors}
+\State $\{M_v\} \gets$ KNeighbors($I$, $K$, $\mathcal{R}$)
+
+\State \textbf{Phase 5: Max-SAT Solving}
+\State solver $\gets$ CreateSolver($I$, $\{M_v\}$)
+\State solver.LoadModel()
+\State solver.Solve()
+\State $cost_{SAT} \gets$ solver.optimum
+\State routes $\gets$ solver.DecodeRoutes()
+
+\State \textbf{Output Results}
+\State Print ``CW+2Opt cost: $cost_{2opt}$''
+\State Print ``SAT cost: $cost_{SAT}$''
+\State Print ``Improvement: $\frac{cost_{2opt} - cost_{SAT}}{cost_{2opt}} \times 100\%$''
+
+\State \Return routes, $cost_{SAT}$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{lstlisting}[caption={Main Execution Script}]
+from classes import Instance, ClarkeWright, TwoOpt, KNeighbors, Solver
+
+if __name__ == '__main__':
+    # Load instance
+    cvrp = Instance('instances/A-n33-k6.vrp').load()
+    
+    # Phase 1-2: Clarke-Wright + 2-Opt
+    cw_time, routes = ClarkeWright.run(cvrp, vehicle_number=6)
+    to_time, routes = TwoOpt.run(routes)
+    
+    cw_cost = sum(route.cost for route in routes.values())
+    print(f'CW + 2-Opt cost: {cw_cost}')
+    
+    # Phase 3: K-Nearest Neighbors
+    _, matrices = KNeighbors.run(cvrp, neighbor_number=5, routes=routes)
+    
+    # Phase 4: SAT Solver
+    solver_time, solver_cost, solver_routes = Solver.run(cvrp, matrices)
+    
+    print(f'Solver cost: {solver_cost}')
+    print(f'Improvement: {(cw_cost - solver_cost) / cw_cost * 100:.2f}%')
+\end{lstlisting}
+
+%=============================================================================
+\section{Experimental Results}
+%=============================================================================
+
+\subsection{Benchmark Instances}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\textbf{Instance} & \textbf{Optimal} & \textbf{CW+2Opt} & \textbf{K=5 Cost} & \textbf{Time (s)} & \textbf{Improvement} \\
+\hline
+A-n33-k6 & 742 & 995 & 916 & 0.538 & 7.9\% \\
+A-n37-k5 & 669 & 1160 & 1020 & 0.979 & 12.1\% \\
+E-n31-k7 & 379 & 647 & 594 & 0.206 & 8.2\% \\
+F-n45-k4 & 724 & 1292 & 1194 & 7.246 & 7.6\% \\
+P-n45-k5 & 510 & 718 & 659 & 34.251 & 8.2\% \\
+P-n101-k4 & 681 & 1162 & 1034 & 90.314 & 11.0\% \\
+\hline
+\end{tabular}
+\caption{Benchmark Results with K=5 Nearest Neighbors}
+\end{table}
+
+\subsection{Effect of K Parameter}
+
+\begin{itemize}
+    \item \textbf{K=3}: Fast computation, limited improvement
+    \item \textbf{K=4}: Moderate balance
+    \item \textbf{K=5}: Best solution quality, longer computation time
+\end{itemize}
+
+Larger K expands the search space, allowing the SAT solver to find better solutions at the cost of increased computational time.
+
+%=============================================================================
+\section{Comparison with RTSS Approach}
+%=============================================================================
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|p{5.5cm}|p{5.5cm}|}
+\hline
+\textbf{Aspect} & \textbf{CVRP (This Paper)} & \textbf{RTSS (Zha et al.)} \\
+\hline
+Problem Type & Static routing & Real-time dynamic allocation \\
+\hline
+Initial Solution & Clarke-Wright + 2-Opt & None (pure SAT) \\
+\hline
+SAT Approach & Post-improvement only & Full encoding from scratch \\
+\hline
+Search Space & Limited by K-neighbors & Full space \\
+\hline
+Incremental & No & Yes (lazy constraints) \\
+\hline
+Subtour Elimination & MTZ formulation & Reachability variables \\
+\hline
+Time Constraints & Capacity only & Deadline + Capacity \\
+\hline
+Solver & clasp & Modified QMaxSAT \\
+\hline
+\end{tabular}
+\caption{Comparison of CVRP and RTSS Max-SAT Approaches}
+\end{table}
+
+%=============================================================================
+\section{Conclusion}
+%=============================================================================
+
+The post-improvement approach for CVRP using Max-SAT demonstrates:
+
+\begin{enumerate}
+    \item \textbf{Effective Hybrid Strategy}: Combining heuristics with exact methods
+    \item \textbf{Search Space Reduction}: K-neighbors limits complexity while enabling improvement
+    \item \textbf{Practical Results}: 7-12\% improvement over heuristic solutions
+    \item \textbf{Reasonable Time}: Solutions found within 100 seconds for most instances
+\end{enumerate}
+
+\textbf{Key Insights:}
+\begin{itemize}
+    \item Heuristics provide good starting points but may miss global optima
+    \item Max-SAT can explore structured search spaces efficiently
+    \item The K-neighbors parameter controls the trade-off between quality and time
+\end{itemize}
+
+%=============================================================================
+\section*{References}
+%=============================================================================
+
+\begin{enumerate}
+    \item Ferreira, P.H., Arruda, A.M. (2024). Post-improving the Capacitated Vehicle Routing Problem Using a Max-SAT Solver. \textit{Brazilian Workshop of Logic}.
+    
+    \item Clarke, G., Wright, J.W. (1964). Scheduling of vehicles from a central depot to a number of delivery points. \textit{Operations Research}, 12(4):568-581.
+    
+    \item Croes, G.A. (1958). A method for solving traveling-salesman problems. \textit{Operations Research}, 6(6):791-812.
+    
+    \item Gebser, M., et al. (2007). clasp: A conflict-driven answer set solver. \textit{LPNMR}, pages 260-265.
+    
+    \item Vidal, T. (2022). Hybrid genetic search for the CVRP: Open-source implementation and swap* neighborhood. \textit{Computers \& Operations Research}, 140:105643.
+\end{enumerate}
+
+\end{document}
