@@ -3,134 +3,255 @@
 """
 Benchmark Runner for Augerat X-Set Instances
 ============================================
-Chạy thực nghiệm riêng cho bộ dữ liệu X-Set, 
-đọc BKS trực tiếp từ file .sol và lưu kết quả ra CSV.
+Sử dụng: python run_benchmark_X.py [METHOD]
+  METHOD: gurobi | cplex | pysat (mặc định: pysat)
+
+Ví dụ:
+  python run_benchmark_X.py gurobi
+  python run_benchmark_X.py cplex
+  python run_benchmark_X.py pysat
 """
 
 import os
+import sys
 import time
 import csv
 import re
+import logging
 
-# Import advanced optimizer của bạn
-try:
-    from advanced_optimizer import solve_advanced
-except ImportError:
-    print("Lỗi: Không tìm thấy 'advanced_optimizer.py'. Đảm bảo nó nằm cùng thư mục.")
-    exit(1)
+VALID_METHODS = ("gurobi", "cplex", "pysat")
 
-# Trỏ tới thư mục chứa bộ X
+def parse_method() -> str:
+    if len(sys.argv) < 2:
+        print(f"[INFO] Không có METHOD, dùng mặc định: pysat")
+        print(f"       Cách dùng: python {sys.argv[0]} [{'|'.join(VALID_METHODS)}]")
+        return "pysat"
+
+    method = sys.argv[1].strip().lower()
+    if method not in VALID_METHODS:
+        print(f"[LỖI] METHOD không hợp lệ: '{method}'")
+        print(f"       Chọn một trong: {', '.join(VALID_METHODS)}")
+        sys.exit(1)
+
+    return method
+
+METHOD = parse_method()
+
+print(f"[INFO] Đang nạp solver: {METHOD.upper()}...")
+
+if METHOD == "gurobi":
+    try:
+        from advanced_optimizer_gurobi import solve_advanced
+    except ImportError as e:
+        print(f"[LỖI] Không import được advanced_optimizer_gurobi: {e}")
+        sys.exit(1)
+
+elif METHOD == "cplex":
+    try:
+        from advanced_optimizer_cplex import solve_advanced
+    except ImportError as e:
+        print(f"[LỖI] Không import được advanced_optimizer_cplex: {e}")
+        sys.exit(1)
+
+else:  # pysat
+    try:
+        from advanced_optimizer_pysat import solve_advanced
+    except ImportError as e:
+        print(f"[LỖI] Không import được advanced_optimizer_pysat: {e}")
+        sys.exit(1)
+
+print(f"[INFO] Solver {METHOD.upper()} đã sẵn sàng.")
+
 INSTANCE_DIR = os.path.join("instances", "X")
-RESULT_FILE = "benchmark_X_results.csv"
+RESULTS_DIR  = "results"
+RESULT_FILE  = os.path.join(RESULTS_DIR, f"benchmark_X_{METHOD}.csv")
 
-def get_bks_from_sol(sol_filepath):
-    """Đọc file .sol để lấy Xest Known Solution (Cost)."""
+if not os.path.exists(RESULTS_DIR):
+    os.makedirs(RESULTS_DIR)
+
+BASE_CONFIGS = {
+    "gurobi": {"single_timeout": 5.0, "patience": 10},
+    "cplex":  {"single_timeout": 5.0, "patience": 10},
+    "pysat":  {"single_timeout": 5.0, "patience": 10},
+}
+
+MAX_ITERATIONS = 80
+
+
+def build_dynamic_config(n: int, k: int) -> dict:
+    """
+    Tính Dynamic Config dựa trên N (số khách) và K (số xe) của instance.
+
+    avg_route_len  = N / K
+    max_single     = max(floor, avg * 1.5)   -- đủ rộng cho tuyến bị phình
+    max_pairwise   = max(floor, avg * 2.5)   -- chứa được ~2.5 tuyến trung bình
+    pair_timeout   = clamp(avg * 1.0, 15s, 40s)
+    n_pairs        = min(k, 15)
+    """
+    base = BASE_CONFIGS[METHOD]
+    avg  = n / k if k > 0 else float(n)
+
+    if METHOD == "gurobi":
+        max_single   = max(40, int(avg * 1.5))
+        max_pairwise = max(25, int(avg * 2.5))
+        pair_timeout = min(40.0, max(15.0, avg * 1.0))
+    elif METHOD == "cplex":
+        max_single   = max(30, int(avg * 1.5))
+        max_pairwise = max(20, int(avg * 2.5))
+        pair_timeout = min(40.0, max(15.0, avg * 1.0))
+    else:  # pysat — solver chậm hơn, giữ ngưỡng thấp
+        max_single   = max(11, int(avg * 1.2))
+        max_pairwise = max(10, int(avg * 2.0))
+        pair_timeout = min(20.0, max(8.0, avg * 0.8))
+
+    return {
+        "max_single_size":   max_single,
+        "single_timeout":    base["single_timeout"],
+        "max_pairwise_size": max_pairwise,
+        "pairwise_timeout":  pair_timeout,
+        "n_closest_pairs":   min(k, 15),
+        "patience":          base["patience"],
+    }
+
+def get_bks_from_sol(sol_filepath: str) -> int:
     if not os.path.exists(sol_filepath):
         return 0
     try:
         with open(sol_filepath, 'r') as f:
             for line in f:
-                # Tìm dòng bắt đầu bằng "Cost" (không phân biệt hoa thường)
                 if line.strip().lower().startswith('cost'):
-                    # Xử lý cả trường hợp "Cost 672" hoặc "Cost: 672"
                     parts = line.replace(':', '').split()
                     if len(parts) >= 2:
                         return int(parts[1])
-    except Exception as e:
-        print(f"Lỗi khi đọc BKS từ {sol_filepath}: {e}")
+    except Exception:
+        pass
     return 0
 
-def get_instance_info(filename):
-    """Trích xuất N và K từ tên file."""
-    name = filename.replace(".vrp", "")
+
+def get_instance_info(filename: str):
+    name    = filename.replace(".vrp", "")
     n_match = re.search(r'-n(\d+)', name)
     k_match = re.search(r'-k(\d+)', name)
     n = int(n_match.group(1)) if n_match else 0
     k = int(k_match.group(1)) if k_match else 0
     return name, n, k
 
-def run_b_benchmark():
+
+def suppress_logging_to_console():
+    root_logger = logging.getLogger()
+    suppressed = []
+    for h in root_logger.handlers:
+        if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler):
+            h.setLevel(logging.CRITICAL)
+            suppressed.append(h)
+    return suppressed
+
+
+def restore_logging_to_console(suppressed_handlers):
+    for h in suppressed_handlers:
+        h.setLevel(logging.INFO)
+
+def run_x_benchmark():
     if not os.path.exists(INSTANCE_DIR):
-        print(f"Lỗi: Không tìm thấy thư mục '{INSTANCE_DIR}'")
-        print(f"Vui lòng tạo thư mục 'instances/X' và copy các file .vrp, .sol vào đó.")
+        print(f"[LỖI] Không tìm thấy thư mục '{INSTANCE_DIR}'")
+        print(f"       Hãy tạo thư mục 'instances/X' và copy file .vrp + .sol vào đó.")
         return
 
-    # Chỉ lấy các file .vrp (bắt đầu bằng X-)
-    b_files = [f for f in os.listdir(INSTANCE_DIR) if f.startswith("X-") and f.endswith(".vrp")]
-    
-    # Sắp xếp theo số lượng Node (N)
-    b_files.sort(key=lambda f: get_instance_info(f)[1])
+    x_files = sorted(
+        [f for f in os.listdir(INSTANCE_DIR) if f.startswith("X-") and f.endswith(".vrp")],
+        key=lambda f: get_instance_info(f)[1]
+    )
 
-    if not b_files:
-        print(f"Không tìm thấy instance bộ X nào trong thư mục '{INSTANCE_DIR}'.")
+    if not x_files:
+        print(f"[INFO] Không tìm thấy file .vrp nào trong '{INSTANCE_DIR}'.")
         return
 
-    print("\n" + "="*60)
-    print(f"BENCHMARK X-SET STARTING ({len(b_files)} files found)")
-    print("="*60)
+    print("\n" + "=" * 70)
+    print(f"BENCHMARK X-SET  |  METHOD: {METHOD.upper()}  |  {len(x_files)} instances")
+    print("CHẾ ĐỘ: Dynamic Config (tính per-instance theo N và K)")
+    print(f"  single_timeout : {BASE_CONFIGS[METHOD]['single_timeout']}s (cố định)")
+    print(f"  patience       : {BASE_CONFIGS[METHOD]['patience']} (cố định)")
+    print(f"  max_iterations : {MAX_ITERATIONS}")
+    print(f"  Các tham số còn lại được tính động dựa trên N/K mỗi instance")
+    print(f"KẾT QUẢ LƯU VÀO: {RESULT_FILE}")
+    print("=" * 70)
 
-    # Chuẩn bị file CSV
+    fieldnames = [
+        'Instance', 'N', 'K', 'BKS', 'Cost_Found', 'Gap(%)', 'Time(s)',
+        'Max_Single', 'Max_Pair', 'Num_Pairs', 'Patience', 'Max_Iter',
+        'Single_Imp_Count', 'Pair_Imp_Count',
+        'Method',
+    ]
+
     file_exists = os.path.exists(RESULT_FILE)
-    with open(RESULT_FILE, mode='a', newline='') as csv_file:
-        fieldnames = ['Instance', 'N', 'K', 'BKS', 'Cost_Found', 'Gap(%)', 'Time(s)']
+    with open(RESULT_FILE, mode='a', newline='', encoding='utf-8') as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        
         if not file_exists:
             writer.writeheader()
 
-        for idx, filename in enumerate(b_files):
+        for idx, filename in enumerate(x_files):
             name, n, k = get_instance_info(filename)
-            
-            filepath = os.path.join(INSTANCE_DIR, filename)
+            filepath     = os.path.join(INSTANCE_DIR, filename)
             sol_filepath = os.path.join(INSTANCE_DIR, filename.replace(".vrp", ".sol"))
-            
-            # Tự động đọc BKS từ file .sol
-            bks = get_bks_from_sol(sol_filepath)
-            bks_str = str(bks) if bks > 0 else "N/A"
-            
-            print(f"\n[{idx+1}/{len(b_files)}] Đang chạy {name} (N={n}, K={k}, BKS={bks_str})...")
-            
-            start_t = time.time()
-            try:
-                # Chặn print của advanced_optimizer để console gọn gàng hơn
-                import sys, io
-                old_stdout = sys.stdout
-                sys.stdout = io.StringIO() 
-                
-                # Gọi hàm tối ưu
-                opt_routes, opt_cost = solve_advanced(filepath)
-                
-                # Phục hồi print
-                sys.stdout = old_stdout
-                
-                elapsed = time.time() - start_t
-                
-                # Tính Gap
-                if bks > 0:
-                    gap = ((opt_cost - bks) / bks) * 100
-                else:
-                    gap = 0.0
 
-                print(f" -> Xong! Cost: {opt_cost} | Gap: {gap:.2f}% | Time: {elapsed:.2f}s")
-                
-                # Ghi ra CSV
+            bks     = get_bks_from_sol(sol_filepath)
+            bks_str = str(bks) if bks > 0 else "N/A"
+
+            print(f"\n[{idx+1:02d}/{len(x_files)}] {name}  (N={n}, K={k}, BKS={bks_str})")
+
+            # --- Tính Dynamic Config cho instance này ---
+            cfg = build_dynamic_config(n, k)
+            print(f"  [Config] single={cfg['max_single_size']} pair={cfg['max_pairwise_size']}"
+                  f" ptimeout={cfg['pairwise_timeout']:.0f}s pairs={cfg['n_closest_pairs']}")
+
+            start_t    = time.time()
+            suppressed = []
+            try:
+                suppressed = suppress_logging_to_console()
+
+                opt_routes, opt_cost, stats = solve_advanced(
+                    filepath,
+                    config=cfg,
+                    max_iterations=MAX_ITERATIONS,
+                )
+
+                restore_logging_to_console(suppressed)
+                elapsed = time.time() - start_t
+
+                gap = ((opt_cost - bks) / bks) * 100 if bks > 0 else 0.0
+
+                print(f"  -> Cost: {opt_cost} | Gap: {gap:+.2f}% | Time: {elapsed:.1f}s")
+                print(f"  -> Single cải thiện: {stats.get('single_imp_count', 0)} lần"
+                      f" | Pairwise cải thiện: {stats.get('pairwise_imp_count', 0)} lần")
+
                 writer.writerow({
-                    'Instance': name,
-                    'N': n,
-                    'K': k,
-                    'BKS': bks_str,
-                    'Cost_Found': opt_cost,
-                    'Gap(%)': f"{gap:.2f}" if bks > 0 else "N/A",
-                    'Time(s)': f"{elapsed:.2f}"
+                    'Instance':         name,
+                    'N':                n,
+                    'K':                k,
+                    'BKS':              bks_str,
+                    'Cost_Found':       opt_cost,
+                    'Gap(%)':           f"{gap:.2f}" if bks > 0 else "N/A",
+                    'Time(s)':          f"{elapsed:.2f}",
+                    'Max_Single':       cfg['max_single_size'],
+                    'Max_Pair':         cfg['max_pairwise_size'],
+                    'Num_Pairs':        cfg['n_closest_pairs'],
+                    'Patience':         cfg['patience'],
+                    'Max_Iter':         MAX_ITERATIONS,
+                    'Single_Imp_Count': stats.get('single_imp_count', 0),
+                    'Pair_Imp_Count':   stats.get('pairwise_imp_count', 0),
+                    'Method':           METHOD,
                 })
                 csv_file.flush()
-                
-            except Exception as e:
-                sys.stdout = old_stdout # Đảm bảo phục hồi stdout nếu có lỗi
-                print(f" -> LỖI khi chạy {name}: {str(e)}")
 
-    print("\n" + "="*60)
-    print(f"ĐÃ HOÀN THÀNH. Kết quả được lưu tại: {RESULT_FILE}")
+            except Exception as e:
+                restore_logging_to_console(suppressed)
+                print(f"  -> LỖI: {e}")
+                import traceback
+                traceback.print_exc()
+
+    print("\n" + "=" * 70)
+    print(f"HOÀN THÀNH. Kết quả: {RESULT_FILE}")
+
 
 if __name__ == "__main__":
-    run_b_benchmark()
+    run_x_benchmark()
