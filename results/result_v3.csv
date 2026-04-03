@@ -1,4 +1,0 @@
-Date,Instance,N,BKS,Cost,Gap%,Time,Status,Config
-2026-01-20 08:12,X-n115-k10,115,12747,N/A,N/A,0.2,CRASH_CW,"{'profile': 'balanced', 'ils_restarts': 50, 'ils_time_limit': 300.0, 'gls_iterations': 200, 'gls_time_limit': 120.0, 'maxsat_threshold': 8, 'pairwise_time': 300.0}"
-2026-01-20 08:14,X-n110-k13,110,14971,0,-100.00,0.2,OK,"{'profile': 'balanced', 'ils_restarts': 50, 'ils_time_limit': 300.0, 'gls_iterations': 200, 'gls_time_limit': 120.0, 'maxsat_threshold': 8, 'pairwise_time': 300.0}"
-2026-01-20 08:14,X-n106-k14,106,26362,0,-100.00,0.2,OK,"{'profile': 'balanced', 'ils_restarts': 50, 'ils_time_limit': 300.0, 'gls_iterations': 200, 'gls_time_limit': 120.0, 'maxsat_threshold': 8, 'pairwise_time': 300.0}"

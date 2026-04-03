@@ -1,3 +1,0 @@
-Date,Method,Instance,N,K,BKS,Best,Avg,Gap(%),Time(s),Runs,n_customers,n_restarts,time_limit
-2026-01-20 23:41,V4_New,X-n106-k14,106,14,26362,26845,26845.0,1.83,763.57,1,105,5,60.0
-2026-01-21 08:47,V4_New,X-n115-k10,115,10,12747,inf,inf,inf,0.17,1,,,

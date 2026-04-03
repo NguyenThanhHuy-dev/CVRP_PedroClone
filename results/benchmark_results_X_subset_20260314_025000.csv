@@ -1,4 +1,0 @@
-Date,Method,Instance,N,K,BKS,Best,Avg,Gap(%),Time(s),Runs,n_customers,n_restarts,time_limit,is_valid,final_k
-2026-03-14 03:22,V4_MaxSAT_SoftConstraint,X-n115-k10,115,10,12747,12935,12935.0,1.47,117.15,1,114,5,60.0,True,10
-2026-03-14 03:24,V4_MaxSAT_SoftConstraint,X-n120-k6,120,6,13332,14203,14203.0,6.53,110.28,1,119,5,60.0,True,6
-2026-03-14 03:43,V4_MaxSAT_SoftConstraint,X-n125-k30,125,30,55539,56968,56968.0,2.57,1180.43,1,124,5,60.0,True,30
