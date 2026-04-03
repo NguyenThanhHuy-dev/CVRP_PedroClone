@@ -84,7 +84,7 @@ TEST_CONFIG = {
     "pairwise_timeout":  500.0,
     "n_closest_pairs":     12,
     "patience":           20,
-    "global_timeout":   1200.0,
+    "global_timeout":   1200.0,   # bắt buộc, không thay đổi
 }
 BASE_CONFIGS = {
     "gurobi": {"single_timeout":  5.0, "patience": 20},
@@ -117,9 +117,9 @@ def build_dynamic_config(n: int, k: int) -> dict:
         "single_timeout":    base["single_timeout"],
         "max_pairwise_size": max_pairwise,
         "pairwise_timeout":  pair_timeout,
-        "n_closest_pairs":   n_pairs, # <-- TRUYỀN BIẾN ĐỘNG VÀO ĐÂY
+        "n_closest_pairs":   n_pairs,
         "patience":          base["patience"],
-        "global_timeout":    1800.0,
+        "global_timeout":    1200.0,   # bắt buộc
     }
 # =====================================================================
 # HELPERS
@@ -257,7 +257,8 @@ def run_b_benchmark():
                 print(f"  -> Single cải thiện: {stats.get('single_imp_count', 0)} lần"
                       f" | Pairwise cải thiện: {stats.get('pairwise_imp_count', 0)} lần"
                       f" | S-timeout: {stats.get('single_timeouts', 0)}"
-                      f" | P-timeout: {stats.get('pairwise_timeouts', 0)}")
+                      f" | P-timeout: {stats.get('pairwise_timeouts', 0)}"
+                      f" | G-timeout: {stats.get('global_timeout', False)}")
 
                 # Upsert vào dict (không tạo row mới nếu đã tồn tại)
                 csv_data = upsert_row(
@@ -278,8 +279,8 @@ def run_b_benchmark():
 
                 # In tóm tắt tổng hợp sau upsert
                 row = csv_data[(name, METHOD)]
-                print(f"  -> Runs={row['Runs']} | Best={row['Best_Cost']}"
-                      f" | Avg={row['Avg_Cost']}")
+                print(f"  -> Runs={row['Runs']} | Best={row['Best_Cost']} ({row['Best_Gap(%)']}%)"
+                      f" | Avg={row['Avg_Cost']} ({row['Avg_Gap(%)']}%)")
 
             except Exception as e:
                 restore_logging_to_console(suppressed)

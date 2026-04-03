@@ -10,52 +10,55 @@ Logic upsert:
   - Nếu (Instance, Method) chưa có  → thêm row mới, Runs=1
   - Nếu (Instance, Method) đã có    → cập nhật row:
       Runs     += 1
-      Avg_Cost  = (old_avg * old_runs + new_cost) / new_runs   (tính lại)
+      Avg_Cost  = (old_avg * old_runs + new_cost) / new_runs
       Best_Cost = min(old_best, new_cost)
       Best_Gap  = tính lại từ Best_Cost và BKS
-      Last_Cost = new_cost  (kết quả lần chạy vừa rồi)
+      Last_Cost = new_cost
       Last_Gap  = gap lần chạy vừa rồi
       Last_Time = time lần chạy vừa rồi
-      Config, Solver → luôn ghi theo lần chạy mới nhất
+      Config    → luôn ghi theo lần chạy mới nhất
+
+Ghi chú cột:
+  - Dùng chung cho cả 3 solver: gurobi, cplex, pysat.
+  - Gurobi/CPLEX: Single_Imp và Pair_Imp là số lần MIP cải thiện được tuyến.
+  - PySAT      : Single_Imp và Pair_Imp là số lần MaxSAT cải thiện được tuyến.
+  - Không còn cột Solver (đã gộp vào cột Method).
+  - G-Timeout  : True/False – có bị dừng do global timeout 1200s không.
 """
 
 import csv
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 
-# Tên cột key để nhận dạng một instance+method
 _KEY_COLS = ("Instance", "Method")
 
-# Tất cả tên cột theo đúng thứ tự trong file CSV
-# Tất cả tên cột theo đúng thứ tự trong file CSV
 FIELDNAMES = [
     # Định danh
     "Instance", "N", "K", "BKS",
-    # Thống kê tổng hợp (được tính lại mỗi lần upsert)
+    # Thống kê tổng hợp
     "Runs",
     "Best_Cost", "Best_Gap(%)",
     "Avg_Cost",  "Avg_Gap(%)",
-    # Kết quả của lần chạy mới nhất
+    # Kết quả lần chạy mới nhất
     "Last_Cost", "Last_Gap(%)", "Last_Time(s)",
-    # Config đã dùng (lần chạy mới nhất)
+    # Tham số config (lần chạy mới nhất)
     "Max_Single", "Max_Pair", "Num_Pairs", "Patience", "Max_Iter",
+    "Single_Timeout(s)", "Pair_Timeout(s)", "Global_Timeout(s)",
     # Thống kê solver
-    "Single_Imp_Count", "Pair_Imp_Count",
-    "S-Timeout", "P-Timeout", "G-Timeout", # <-- ĐÃ THÊM 3 CỘT NÀY
+    "Single_Imp", "Pair_Imp",
+    "S-Timeout", "P-Timeout", "G-Timeout",
     # Phân loại
-    "Method", "Solver",
+    "Method",
 ]
+
 
 def _make_key(row: Dict[str, str]) -> tuple:
     return (row.get("Instance", ""), row.get("Method", ""))
 
 
 def load_csv(filepath: str) -> Dict[tuple, Dict[str, str]]:
-    """
-    Đọc file CSV vào dict keyed by (Instance, Method).
-    Trả về dict rỗng nếu file chưa tồn tại.
-    """
+    """Đọc file CSV vào dict keyed by (Instance, Method)."""
     data: Dict[tuple, Dict[str, str]] = {}
     if not os.path.exists(filepath):
         return data
@@ -68,10 +71,7 @@ def load_csv(filepath: str) -> Dict[tuple, Dict[str, str]]:
 
 
 def save_csv(filepath: str, data: Dict[tuple, Dict[str, str]]) -> None:
-    """
-    Ghi toàn bộ dict ra file CSV, giữ thứ tự cột theo FIELDNAMES.
-    Các cột không có trong FIELDNAMES sẽ bị bỏ qua (tránh crash).
-    """
+    """Ghi toàn bộ dict ra file CSV."""
     os.makedirs(os.path.dirname(filepath) or ".", exist_ok=True)
     with open(filepath, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDNAMES, extrasaction="ignore")
@@ -81,61 +81,69 @@ def save_csv(filepath: str, data: Dict[tuple, Dict[str, str]]) -> None:
 
 
 def upsert_row(
-    data: Dict[tuple, Dict[str, str]],
-    instance:  str,
-    n: int, k: int,
-    bks:       int,
-    new_cost:  float,
-    elapsed:   float,
-    cfg:       Dict[str, Any],
-    stats:     Dict[str, Any],
-    method:    str,
+    data:           Dict[tuple, Dict[str, str]],
+    instance:       str,
+    n:              int,
+    k:              int,
+    bks:            int,
+    new_cost:       float,
+    elapsed:        float,
+    cfg:            Dict[str, Any],
+    stats:          Dict[str, Any],
+    method:         str,
     max_iterations: int,
 ) -> Dict[tuple, Dict[str, str]]:
     """
     Upsert một kết quả vào dict.
-
-    - Lần đầu chạy  → tạo row mới với Runs=1, Best=Avg=Last=new_cost.
-    - Lần chạy lại  → cập nhật Runs, tính lại Avg, cập nhật Best nếu tốt hơn,
-                       luôn ghi Last theo lần chạy vừa rồi.
     """
-    bks_str  = str(bks) if bks > 0 else "N/A"
-    new_gap  = ((new_cost - bks) / bks * 100) if bks > 0 else 0.0
-    gap_str  = lambda cost: f"{((cost - bks) / bks * 100):.2f}" if bks > 0 else "N/A"
+    bks_str = str(bks) if bks > 0 else "N/A"
+    gap_str = lambda cost: f"{((cost - bks) / bks * 100):.2f}" if bks > 0 else "N/A"
 
     key = (instance, method)
 
+    # Tham số config để ghi vào CSV
+    def _cfg(k_name, default=""):
+        return str(cfg.get(k_name, default))
+
+    row_cfg = {
+        "Max_Single":        _cfg("max_single_size"),
+        "Max_Pair":          _cfg("max_pairwise_size"),
+        "Num_Pairs":         _cfg("n_closest_pairs"),
+        "Patience":          _cfg("patience"),
+        "Max_Iter":          str(max_iterations),
+        "Single_Timeout(s)": _cfg("single_timeout"),
+        "Pair_Timeout(s)":   _cfg("pairwise_timeout"),
+        "Global_Timeout(s)": _cfg("global_timeout", 1200.0),
+    }
+
+    row_stats = {
+        "Single_Imp": str(stats.get("single_imp_count",    0)),
+        "Pair_Imp":   str(stats.get("pairwise_imp_count",  0)),
+        "S-Timeout":  str(stats.get("single_timeouts",     0)),
+        "P-Timeout":  str(stats.get("pairwise_timeouts",   0)),
+        "G-Timeout":  str(stats.get("global_timeout",  False)),
+    }
+
     if key not in data:
-        # ── Lần đầu: tạo mới ──────────────────────────────────────────
         data[key] = {
-            "Instance":         instance,
-            "N":                str(n),
-            "K":                str(k),
-            "BKS":              bks_str,
-            "Runs":             "1",
-            "Best_Cost":        f"{new_cost:.0f}",
-            "Best_Gap(%)":      gap_str(new_cost),
-            "Avg_Cost":         f"{new_cost:.2f}",
-            "Avg_Gap(%)":       gap_str(new_cost),
-            "Last_Cost":        f"{new_cost:.0f}",
-            "Last_Gap(%)":      gap_str(new_cost),
-            "Last_Time(s)":     f"{elapsed:.2f}",
-            "Max_Single":       str(cfg.get("max_single_size",   "")),
-            "Max_Pair":         str(cfg.get("max_pairwise_size", "")),
-            "Num_Pairs":        str(cfg.get("n_closest_pairs",   "")),
-            "Patience":         str(cfg.get("patience",          "")),
-            "Max_Iter":         str(max_iterations),
-            "Single_Imp_Count": str(stats.get("single_imp_count",   0)),
-            "Pair_Imp_Count":   str(stats.get("pairwise_imp_count", 0)),
-            "S-Timeout":        str(stats.get("single_timeouts",    0)), # <-- THÊM
-            "P-Timeout":        str(stats.get("pairwise_timeouts",  0)), # <-- THÊM
-            "G-Timeout":        str(stats.get("global_timeout", False)), # <-- THÊM
-            "Method":           method,
-            "Solver":           stats.get("solver_name", "N/A"),
+            "Instance":        instance,
+            "N":               str(n),
+            "K":               str(k),
+            "BKS":             bks_str,
+            "Runs":            "1",
+            "Best_Cost":       f"{new_cost:.0f}",
+            "Best_Gap(%)":     gap_str(new_cost),
+            "Avg_Cost":        f"{new_cost:.2f}",
+            "Avg_Gap(%)":      gap_str(new_cost),
+            "Last_Cost":       f"{new_cost:.0f}",
+            "Last_Gap(%)":     gap_str(new_cost),
+            "Last_Time(s)":    f"{elapsed:.2f}",
+            "Method":          method,
+            **row_cfg,
+            **row_stats,
         }
     else:
-        # ── Lần chạy lại: upsert ──────────────────────────────────────
-        old = data[key]
+        old      = data[key]
         old_runs = int(old.get("Runs", "1"))
         old_avg  = float(old.get("Avg_Cost", str(new_cost)))
         old_best = float(old.get("Best_Cost", str(new_cost)))
@@ -145,26 +153,16 @@ def upsert_row(
         new_best = min(old_best, new_cost)
 
         old.update({
-            "Runs":             str(new_runs),
-            "Best_Cost":        f"{new_best:.0f}",
-            "Best_Gap(%)":      gap_str(new_best),
-            "Avg_Cost":         f"{new_avg:.2f}",
-            "Avg_Gap(%)":       gap_str(new_avg),
-            "Last_Cost":        f"{new_cost:.0f}",
-            "Last_Gap(%)":      gap_str(new_cost),
-            "Last_Time(s)":     f"{elapsed:.2f}",
-            # Config luôn cập nhật theo lần chạy mới nhất
-            "Max_Single":       str(cfg.get("max_single_size",   "")),
-            "Max_Pair":         str(cfg.get("max_pairwise_size", "")),
-            "Num_Pairs":        str(cfg.get("n_closest_pairs",   "")),
-            "Patience":         str(cfg.get("patience",          "")),
-            "Max_Iter":         str(max_iterations),
-            "Single_Imp_Count": str(stats.get("single_imp_count",   0)),
-            "Pair_Imp_Count":   str(stats.get("pairwise_imp_count", 0)),
-            "S-Timeout":        str(stats.get("single_timeouts",    0)), # <-- THÊM
-            "P-Timeout":        str(stats.get("pairwise_timeouts",  0)), # <-- THÊM
-            "G-Timeout":        str(stats.get("global_timeout", False)), # <-- THÊM
-            "Solver":           stats.get("solver_name", "N/A"),
+            "Runs":          str(new_runs),
+            "Best_Cost":     f"{new_best:.0f}",
+            "Best_Gap(%)":   gap_str(new_best),
+            "Avg_Cost":      f"{new_avg:.2f}",
+            "Avg_Gap(%)":    gap_str(new_avg),
+            "Last_Cost":     f"{new_cost:.0f}",
+            "Last_Gap(%)":   gap_str(new_cost),
+            "Last_Time(s)":  f"{elapsed:.2f}",
+            **row_cfg,
+            **row_stats,
         })
         data[key] = old
 
