@@ -151,6 +151,16 @@ def restore_logging_to_console(suppressed_handlers):
     for h in suppressed_handlers:
         h.setLevel(logging.INFO)
 
+def get_completed_instances(csv_path):
+    if not os.path.exists(csv_path):
+        return set()
+    done = set()
+    with open(csv_path, newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            done.add(row['Instance'])
+    return done
+
 def run_x_benchmark():
     if not os.path.exists(INSTANCE_DIR):
         print(f"[LỖI] Không tìm thấy thư mục '{INSTANCE_DIR}'")
@@ -161,6 +171,16 @@ def run_x_benchmark():
         [f for f in os.listdir(INSTANCE_DIR) if f.startswith("X-") and f.endswith(".vrp")],
         key=lambda f: get_instance_info(f)[1]
     )
+
+    completed = get_completed_instances(RESULT_FILE)
+
+    x_files = [
+        f for f in x_files
+        if get_instance_info(f)[0] not in completed
+    ]
+    
+    print(f"[INFO] Đã chạy: {len(completed)} instances")
+    print(f"[INFO] Còn lại: {len(x_files)} instances sẽ chạy")
 
     if not x_files:
         print(f"[INFO] Không tìm thấy file .vrp nào trong '{INSTANCE_DIR}'.")

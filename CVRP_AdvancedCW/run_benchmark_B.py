@@ -18,10 +18,8 @@ import time
 import csv
 import re
 import logging
+from csv_upsert import load_csv, save_csv, upsert_row, FIELDNAMES
 
-# =====================================================================
-# PHÂN TÍCH THAM SỐ DÒNG LỆNH
-# =====================================================================
 VALID_METHODS = ("gurobi", "cplex", "pysat")
 
 def parse_method() -> str:
@@ -40,10 +38,6 @@ def parse_method() -> str:
     return method
 
 METHOD = parse_method()
-
-# =====================================================================
-# IMPORT SOLVER TƯƠNG ỨNG
-# =====================================================================
 print(f"[INFO] Đang nạp solver: {METHOD.upper()}...")
 
 if METHOD == "gurobi":
@@ -69,9 +63,6 @@ else:  # pysat
 
 print(f"[INFO] Solver {METHOD.upper()} đã sẵn sàng.")
 
-# =====================================================================
-# CẤU HÌNH THƯ MỤC & FILE KẾT QUẢ (tách riêng theo method)
-# =====================================================================
 INSTANCE_DIR = os.path.join("instances", "B")
 RESULTS_DIR  = "results"
 
@@ -82,37 +73,51 @@ if not os.path.exists(RESULTS_DIR):
     os.makedirs(RESULTS_DIR)
 
 # =====================================================================
-# SIÊU THAM SỐ - Mỗi method có config tối ưu riêng
+# THAM SỐ
 # =====================================================================
-CONFIGS = {
-    "gurobi": {
-        "max_single_size":   40,
-        "single_timeout":     2.0,
-        "max_pairwise_size": 25,
-        "pairwise_timeout":  10.0,
-        "n_closest_pairs":    5,
-        "patience":           5,
-    },
-    "cplex": {
-        "max_single_size":   30,
-        "single_timeout":     5.0,
-        "max_pairwise_size": 20,
-        "pairwise_timeout":  10.0,
-        "n_closest_pairs":    5,
-        "patience":           5,
-    },
-    "pysat": {
-        "max_single_size":   11,
-        "single_timeout":     5.0,
-        "max_pairwise_size": 10,
-        "pairwise_timeout":   8.0,
-        "n_closest_pairs":    3,
-        "patience":           5,
-    },
+MAX_ITERATIONS = 150
+USE_TEST_CONFIG = True
+TEST_CONFIG = {
+    "max_single_size":    11,
+    "single_timeout":     20.0,
+    "max_pairwise_size":  9,
+    "pairwise_timeout":   1000.0,
+    "n_closest_pairs":     15,
+    "patience":           20,
+    "global_timeout":   1200.0,
+}
+BASE_CONFIGS = {
+    "gurobi": {"single_timeout":  5.0, "patience": 10},
+    "cplex":  {"single_timeout":  5.0, "patience": 10},
+    "pysat":  {"single_timeout": 10.0, "patience": 20},
 }
 
-TUNING_CONFIG = CONFIGS[METHOD]
-MAX_ITERATIONS = 50
+def build_dynamic_config(n: int, k: int) -> dict:
+    base = BASE_CONFIGS[METHOD]
+    avg  = n / k if k > 0 else float(n)
+
+    if METHOD == "gurobi":
+        max_single   = max(40, int(avg * 1.5))
+        max_pairwise = max(25, int(avg * 2.5))
+        pair_timeout = min(40.0, max(15.0, avg * 1.0))
+    elif METHOD == "cplex":
+        max_single   = max(30, int(avg * 1.5))
+        max_pairwise = max(20, int(avg * 2.5))
+        pair_timeout = min(40.0, max(15.0, avg * 1.0))
+    else:  # pysat — kích thước bài toán con bị giới hạn cứng
+        max_single   = min(11, max(8,  int(avg * 1.0)))
+        max_pairwise = min(12, max(8,  int(avg * 1.5)))
+        pair_timeout = min(20.0, max(15.0, avg * 1.5))
+
+    return {
+        "max_single_size":   max_single,
+        "single_timeout":    base["single_timeout"],
+        "max_pairwise_size": max_pairwise,
+        "pairwise_timeout":  pair_timeout,
+        "n_closest_pairs":   min(k, 5),
+        "patience":          base["patience"],
+        "global_timeout":    1800.0,
+    }
 
 # =====================================================================
 # HELPERS
@@ -180,28 +185,23 @@ def run_b_benchmark():
     # --- In tiêu đề ---
     print("\n" + "=" * 70)
     print(f"BENCHMARK B-SET  |  METHOD: {METHOD.upper()}  |  {len(b_files)} instances")
-    print("CẤU HÌNH THAM SỐ:")
-    for k, v in TUNING_CONFIG.items():
-        print(f"  {k}: {v}")
-    print(f"  max_iterations: {MAX_ITERATIONS}")
+    if USE_TEST_CONFIG:
+        print("CHẾ ĐỘ: TEST CONFIG (cố định, dễ so sánh)")
+        for k_cfg, v_cfg in TEST_CONFIG.items():
+            print(f"  {k_cfg}: {v_cfg}")
+    else:
+        print("CHẾ ĐỘ: Dynamic Config (tính per-instance theo N và K)")
+        print(f"  single_timeout : {BASE_CONFIGS[METHOD]['single_timeout']}s")
+        print(f"  patience       : {BASE_CONFIGS[METHOD]['patience']}")
+    print(f"  max_iterations : {MAX_ITERATIONS}")
     print(f"KẾT QUẢ LƯU VÀO: {RESULT_FILE}")
     print("=" * 70)
 
-    # --- Chuẩn bị CSV ---
-    fieldnames = [
-        'Instance', 'N', 'K', 'BKS', 'Cost_Found', 'Gap(%)', 'Time(s)',
-        'Max_Single', 'Max_Pair', 'Num_Pairs', 'Patience', 'Max_Iter',
-        'Single_Imp_Count', 'Pair_Imp_Count',
-        'Method',
-    ]
+    # --- Load toàn bộ CSV hiện tại vào memory (upsert mode) ---
+    csv_data = load_csv(RESULT_FILE)
+    print(f"[INFO] Đã load {len(csv_data)} kết quả cũ từ {RESULT_FILE}")
 
-    file_exists = os.path.exists(RESULT_FILE)
-    with open(RESULT_FILE, mode='a', newline='', encoding='utf-8') as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        if not file_exists:
-            writer.writeheader()
-
-        for idx, filename in enumerate(b_files):
+    for idx, filename in enumerate(b_files):
             name, n, k = get_instance_info(filename)
             filepath     = os.path.join(INSTANCE_DIR, filename)
             sol_filepath = os.path.join(INSTANCE_DIR, filename.replace(".vrp", ".sol"))
@@ -209,7 +209,25 @@ def run_b_benchmark():
             bks     = get_bks_from_sol(sol_filepath)
             bks_str = str(bks) if bks > 0 else "N/A"
 
-            print(f"\n[{idx+1:02d}/{len(b_files)}] {name}  (N={n}, K={k}, BKS={bks_str})")
+            # Thông báo nếu instance này đã từng chạy trước đó
+            existing_key = (name, METHOD)
+            if existing_key in csv_data:
+                old_runs = csv_data[existing_key].get("Runs", "0")
+                old_best = csv_data[existing_key].get("Best_Cost", "?")
+                print(f"\n[{idx+1:02d}/{len(b_files)}] {name}  (N={n}, K={k}, BKS={bks_str})"
+                      f"  ← đã có {old_runs} lần chạy, best={old_best}")
+            else:
+                print(f"\n[{idx+1:02d}/{len(b_files)}] {name}  (N={n}, K={k}, BKS={bks_str})"
+                      f"  ← lần đầu chạy")
+
+            # --- Chọn config ---
+            if USE_TEST_CONFIG:
+                cfg = TEST_CONFIG.copy()
+            else:
+                cfg = build_dynamic_config(n, k)
+            print(f"  [Config] single={cfg['max_single_size']} pair={cfg['max_pairwise_size']}"
+                  f" stimeout={cfg['single_timeout']:.0f}s ptimeout={cfg['pairwise_timeout']:.0f}s"
+                  f" pairs={cfg['n_closest_pairs']} patience={cfg['patience']}")
 
             start_t    = time.time()
             suppressed = []
@@ -218,7 +236,7 @@ def run_b_benchmark():
 
                 opt_routes, opt_cost, stats = solve_advanced(
                     filepath,
-                    config=TUNING_CONFIG,
+                    config=cfg,
                     max_iterations=MAX_ITERATIONS,
                 )
 
@@ -229,26 +247,31 @@ def run_b_benchmark():
 
                 print(f"  -> Cost: {opt_cost} | Gap: {gap:+.2f}% | Time: {elapsed:.1f}s")
                 print(f"  -> Single cải thiện: {stats.get('single_imp_count', 0)} lần"
-                      f" | Pairwise cải thiện: {stats.get('pairwise_imp_count', 0)} lần")
+                      f" | Pairwise cải thiện: {stats.get('pairwise_imp_count', 0)} lần"
+                      f" | S-timeout: {stats.get('single_timeouts', 0)}"
+                      f" | P-timeout: {stats.get('pairwise_timeouts', 0)}")
 
-                writer.writerow({
-                    'Instance':         name,
-                    'N':                n,
-                    'K':                k,
-                    'BKS':              bks_str,
-                    'Cost_Found':       opt_cost,
-                    'Gap(%)':           f"{gap:.2f}" if bks > 0 else "N/A",
-                    'Time(s)':          f"{elapsed:.2f}",
-                    'Max_Single':       TUNING_CONFIG['max_single_size'],
-                    'Max_Pair':         TUNING_CONFIG['max_pairwise_size'],
-                    'Num_Pairs':        TUNING_CONFIG['n_closest_pairs'],
-                    'Patience':         TUNING_CONFIG['patience'],
-                    'Max_Iter':         MAX_ITERATIONS,
-                    'Single_Imp_Count': stats.get('single_imp_count', 0),
-                    'Pair_Imp_Count':   stats.get('pairwise_imp_count', 0),
-                    'Method':           METHOD,
-                })
-                csv_file.flush()
+                # Upsert vào dict (không tạo row mới nếu đã tồn tại)
+                csv_data = upsert_row(
+                    data=csv_data,
+                    instance=name,
+                    n=n, k=k,
+                    bks=bks,
+                    new_cost=opt_cost,
+                    elapsed=elapsed,
+                    cfg=cfg,
+                    stats=stats,
+                    method=METHOD,
+                    max_iterations=MAX_ITERATIONS,
+                )
+
+                # Ghi ngay sau mỗi instance để không mất dữ liệu nếu crash
+                save_csv(RESULT_FILE, csv_data)
+
+                # In tóm tắt tổng hợp sau upsert
+                row = csv_data[(name, METHOD)]
+                print(f"  -> Runs={row['Runs']} | Best={row['Best_Cost']}"
+                      f" | Avg={row['Avg_Cost']}")
 
             except Exception as e:
                 restore_logging_to_console(suppressed)

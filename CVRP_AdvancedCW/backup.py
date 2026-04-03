@@ -7,12 +7,12 @@ Advanced CVRP Optimizer using MaxSAT + Multiprocessing Timeout
 Về cơ chế timeout hai tầng:
   - Per-call timeout  : ngăn bộ giải RC2/PySAT bị treo vô hạn trên
                         một subproblem cụ thể (single route / pair route).
-                        Giá trị này được tính ĐỘNG = min(config_timeout,
-                        remaining_global_time - buffer) nên global timeout
-                        LUÔN được đảm bảo, kể cả khi RC2 đang chạy bên trong.
+                        Đây là timeout PHÒNG THỦ, luôn cần thiết vì
+                        Max-SAT không có cơ chế dừng nội tại theo thời gian.
   - Global timeout    : giới hạn tổng thời gian của toàn bộ vòng lặp
-                        optimize(). Được kiểm tra ở đầu mỗi iteration
-                        VÀ được truyền xuống làm ceiling cho per-call timeout.
+                        optimize(), ngăn benchmark chạy quá lâu trên
+                        các instance lớn (bộ X). Được kiểm tra ở đầu
+                        mỗi iteration.
 """
 
 import sys
@@ -21,11 +21,10 @@ import time
 import logging
 import multiprocessing
 import numpy as np
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Tuple, Dict, Any
 from pysat.examples.rc2 import RC2
 from pysat.formula import WCNF
 from itertools import combinations
-from pysat.pb import PBEnc
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -40,31 +39,15 @@ logging.basicConfig(
     ]
 )
 
+# Tên solver dùng để ghi vào CSV
 SOLVER_NAME = "MaxSAT-RC2"
 
 # =====================================================================
-# SINGLE ROUTE OPTIMIZER
+# MAX-SAT OPTIMIZERS (SINGLE & PAIRWISE)
 # =====================================================================
 
 class SingleRouteOptimizer:
-    """
-    Tối ưu 1 route bằng MaxSAT (bài toán TSP con).
-
-    Mã hóa dùng biến kết nối conNet[i][j] và biến thứ tự rchNet[i][j].
-    rchNet chỉ tạo cho customer-customer (1..n-1), không tạo cho depot
-    vì depot luôn là điểm xuất phát.
-
-    Ràng buộc cứng:
-      1. Implication:   l(i,j) → r(i,j)           [customer-customer]
-      2. Transitivity:  r(a,b) ∧ r(b,c) → r(a,c)  [customer-customer]
-      3. Chain law:     r(a,b) ∧ r(b,c) → ¬l(a,c) [customer-customer]
-      4. Depot out:     exactly-one cạnh 0→j
-      5. Depot in:      exactly-one cạnh j→0
-      6. Customer deg:  exactly-one in, exactly-one out mỗi customer
-      7. Depot-first:   l(0,j) → ¬l(k,j) ∀k≠0,k≠j
-                        Nếu depot đến j, j là điểm đầu tiên nên không
-                        customer k nào khác có thể đến j trực tiếp.
-    """
+    """Tối ưu 1 route bằng MaxSAT (bài toán TSP con)."""
 
     def __init__(self, customers: List[int], distances: np.ndarray):
         self.customers = customers
@@ -90,32 +73,25 @@ class SingleRouteOptimizer:
         return self.var_id
 
     def optimize(self) -> Tuple[List[int], int]:
-        # --- Biến kết nối ---
         for i in range(self.n):
             for j in range(self.n):
-                if i != j:
-                    self.conNet[i][j] = self.new_var_id()
-
-        # --- Biến thứ tự (customer-customer only, không có depot) ---
+                if i != j: self.conNet[i][j] = self.new_var_id()
         for i in range(1, self.n):
             for j in range(i + 1, self.n):
                 var = self.new_var_id()
                 self.rchNet[i][j] = var
                 self.rchNet[j][i] = -var
 
-        # --- Mệnh đề mềm: minimize distance ---
         for i in range(self.n):
             for j in range(self.n):
                 if i != j and self.local_dist[i, j] > 0:
                     self.wcnf.append([-self.conNet[i][j]], weight=self.local_dist[i, j])
 
-        # --- Ràng buộc 1: l(i,j) → r(i,j) ---
         for i in range(1, self.n):
             for j in range(1, self.n):
                 if i != j and self.rchNet[i][j] != 0:
                     self.wcnf.append([-self.conNet[i][j], self.rchNet[i][j]])
 
-        # --- Ràng buộc 2: Transitivity r(a,b) ∧ r(b,c) → r(a,c) ---
         for a in range(1, self.n):
             for b in range(1, self.n):
                 if a == b: continue
@@ -127,7 +103,6 @@ class SingleRouteOptimizer:
                     if r_ab != 0 and r_bc != 0 and r_ac != 0:
                         self.wcnf.append([-r_ab, -r_bc, r_ac])
 
-        # --- Ràng buộc 3: Chain law r(a,b) ∧ r(b,c) → ¬l(a,c) ---
         for a in range(1, self.n):
             for b in range(1, self.n):
                 if a == b: continue
@@ -139,21 +114,18 @@ class SingleRouteOptimizer:
                     if r_ab != 0 and r_bc != 0 and l_ac != 0:
                         self.wcnf.append([-r_ab, -r_bc, -l_ac])
 
-        # --- Ràng buộc 4: Depot out exactly-once ---
         out_vars = [self.conNet[0][j] for j in range(1, self.n)]
         self.wcnf.append(out_vars)
         for i in range(len(out_vars)):
             for j in range(i + 1, len(out_vars)):
                 self.wcnf.append([-out_vars[i], -out_vars[j]])
 
-        # --- Ràng buộc 5: Depot in exactly-once ---
         in_vars = [self.conNet[i][0] for i in range(1, self.n)]
         self.wcnf.append(in_vars)
         for i in range(len(in_vars)):
             for j in range(i + 1, len(in_vars)):
                 self.wcnf.append([-in_vars[i], -in_vars[j]])
 
-        # --- Ràng buộc 6: Customer degree exactly-once ---
         for c in range(1, self.n):
             in_v = [self.conNet[i][c] for i in range(self.n) if i != c]
             self.wcnf.append(in_v)
@@ -167,15 +139,6 @@ class SingleRouteOptimizer:
                 for j in range(i + 1, len(out_v)):
                     self.wcnf.append([-out_v[i], -out_v[j]])
 
-        # --- Ràng buộc 7: Depot-first (MỚI) ---
-        # l(0,j) → ¬l(k,j)  ∀k ∈ {1..n-1}, k ≠ j
-        for j in range(1, self.n):
-            depot_to_j = self.conNet[0][j]
-            for k in range(1, self.n):
-                if k == j: continue
-                self.wcnf.append([-depot_to_j, -self.conNet[k][j]])
-
-        # --- Giải ---
         with RC2(self.wcnf, verbose=0) as solver:
             model = solver.compute()
             if model:
@@ -188,31 +151,22 @@ class SingleRouteOptimizer:
                     for j in range(self.n):
                         if j not in visited and self.conNet[current][j] in positive:
                             gid = self.local_to_global[j]
-                            if gid != 0:
-                                route.append(gid)
+                            if gid != 0: route.append(gid)
                             visited.add(j)
                             current = j
                             found = True
                             break
-                    if not found:
-                        break
+                    if not found: break
                 return route, solver.cost
             else:
                 orig_cost = self.local_dist[0, 1]
-                for i in range(1, self.n - 1):
-                    orig_cost += self.local_dist[i, i + 1]
+                for i in range(1, self.n - 1): orig_cost += self.local_dist[i, i + 1]
                 orig_cost += self.local_dist[self.n - 1, 0]
                 return self.customers, orig_cost
 
 
-# =====================================================================
-# PAIRWISE ROUTE OPTIMIZER
-# =====================================================================
-
 class PairwiseRouteOptimizer:
-    """Tối ưu 2 routes bằng MaxSAT (phân hoạch + thứ tự đồng thời).
-    Dùng PBEnc để mã hóa ràng buộc tải trọng chính xác thành CNF.
-    """
+    """Tối ưu 2 routes bằng MaxSAT (phân hoạch + thứ tự đồng thời)."""
 
     def __init__(self, c1: List[int], c2: List[int], dist: np.ndarray,
                  dem: np.ndarray, cap: int):
@@ -249,24 +203,6 @@ class PairwiseRouteOptimizer:
                     self.rch[v][j][i] = -v_r
         for i in range(1, self.n): self.asn[i] = self.nid()
 
-        # --- Ràng buộc tải trọng bằng PBEnc ---
-        lits_v1, lits_v0, weights = [], [], []
-        for i in range(1, self.n):
-            lits_v1.append(self.asn[i])
-            lits_v0.append(-self.asn[i])
-            weights.append(int(self.dem[self.l2g[i]]))
-
-        cnf_v1 = PBEnc.leq(lits=lits_v1, weights=weights, bound=self.cap, top_id=self.var_id)
-        for clause in cnf_v1.clauses: self.wcnf.append(clause)
-        if cnf_v1.clauses:
-            self.var_id = max(self.var_id, max(max(abs(l) for l in cl) for cl in cnf_v1.clauses))
-
-        cnf_v0 = PBEnc.leq(lits=lits_v0, weights=weights, bound=self.cap, top_id=self.var_id)
-        for clause in cnf_v0.clauses: self.wcnf.append(clause)
-        if cnf_v0.clauses:
-            self.var_id = max(self.var_id, max(max(abs(l) for l in cl) for cl in cnf_v0.clauses))
-
-        # --- Mệnh đề mềm ---
         for v in range(2):
             for i in range(self.n):
                 for j in range(self.n):
@@ -311,22 +247,27 @@ class PairwiseRouteOptimizer:
 
             out_v = [self.con[v][0][j] for j in range(1, self.n)]
             for i in range(len(out_v)):
-                for j in range(i+1, len(out_v)): self.wcnf.append([-out_v[i], -out_v[j]])
+                for j in range(i+1, len(out_v)):
+                    self.wcnf.append([-out_v[i], -out_v[j]])
             in_v = [self.con[v][i][0] for i in range(1, self.n)]
             for i in range(len(in_v)):
-                for j in range(i+1, len(in_v)): self.wcnf.append([-in_v[i], -in_v[j]])
+                for j in range(i+1, len(in_v)):
+                    self.wcnf.append([-in_v[i], -in_v[j]])
 
         for i in range(1, self.n):
             for v in range(2):
                 in_e  = [self.con[v][j][i] for j in range(self.n) if j != i]
                 out_e = [self.con[v][i][j] for j in range(self.n) if j != i]
                 for x in range(len(in_e)):
-                    for y in range(x+1, len(in_e)): self.wcnf.append([-in_e[x], -in_e[y]])
+                    for y in range(x+1, len(in_e)):
+                        self.wcnf.append([-in_e[x], -in_e[y]])
                 for x in range(len(out_e)):
-                    for y in range(x+1, len(out_e)): self.wcnf.append([-out_e[x], -out_e[y]])
+                    for y in range(x+1, len(out_e)):
+                        self.wcnf.append([-out_e[x], -out_e[y]])
                 for ie in in_e: self.wcnf.append([-ie] + out_e)
             alle = []
-            for v in range(2): alle.extend([self.con[v][j][i] for j in range(self.n) if j != i])
+            for v in range(2):
+                alle.extend([self.con[v][j][i] for j in range(self.n) if j != i])
             self.wcnf.append(alle)
 
         with RC2(self.wcnf, verbose=0) as solver:
@@ -335,14 +276,18 @@ class PairwiseRouteOptimizer:
                 pos = set(v for v in model if v > 0)
                 rts = [[], []]
                 for v in range(2):
-                    cur = 0; vis = {0}
+                    cur = 0
+                    vis = {0}
                     for _ in range(self.n - 1):
                         f = False
                         for j in range(self.n):
                             if j not in vis and self.con[v][cur][j] in pos:
                                 gid = self.l2g[j]
                                 if gid != 0: rts[v].append(gid)
-                                vis.add(j); cur = j; f = True; break
+                                vis.add(j)
+                                cur = j
+                                f = True
+                                break
                         if not f: break
                 if (sum(self.dem[c] for c in rts[0]) > self.cap or
                         sum(self.dem[c] for c in rts[1]) > self.cap):
@@ -354,7 +299,6 @@ class PairwiseRouteOptimizer:
 # =====================================================================
 # MULTIPROCESSING WRAPPERS
 # =====================================================================
-
 def _solve_single_worker(customers, distances):
     opt = SingleRouteOptimizer(customers, distances)
     return opt.optimize()
@@ -367,20 +311,16 @@ def _solve_pairwise_worker(c1, c2, distances, demands, capacity):
 # =====================================================================
 # ADVANCED CVRP OPTIMIZER
 # =====================================================================
-
 class AdvancedCVRPOptimizer:
     """
-    Global timeout được đảm bảo hoàn toàn qua cơ chế dynamic per-call timeout:
-
-      effective_timeout = min(config_timeout, remaining - BUFFER)
-
-    BUFFER = 2s để dành cho pool.terminate() + pool.join().
-    Nếu remaining < BUFFER thì skip lần gọi đó ngay lập tức (0 giây chờ).
-
-    Kết quả: time(s) trong CSV sẽ không bao giờ vượt quá global_timeout + ~3s.
+    Timeout hai tầng:
+      per-call timeout  — ngăn RC2 bị treo trên 1 subproblem cụ thể.
+                          RC2 không có cơ chế dừng nội tại theo thời gian,
+                          nên cần multiprocessing.Pool làm watchdog bên ngoài.
+      global timeout    — giới hạn tổng thời gian của toàn bộ vòng lặp.
+                          Được kiểm tra ở đầu mỗi iteration; khi hết giờ,
+                          trả về nghiệm tốt nhất đã tìm được đến thời điểm đó.
     """
-
-    _POOL_CLEANUP_BUFFER = 2.0  # giây
 
     def __init__(self, distances: np.ndarray, demands: np.ndarray,
                  capacity: int, n_vehicles: int,
@@ -394,37 +334,20 @@ class AdvancedCVRPOptimizer:
             config = {}
 
         self.max_single_size   = config.get("max_single_size",   11)
-        self.single_timeout    = config.get("single_timeout",    10.0)
+        self.single_timeout    = config.get("single_timeout",     5.0)
         self.max_pairwise_size = config.get("max_pairwise_size", 10)
-        self.pairwise_timeout  = config.get("pairwise_timeout",  20.0)
+        self.pairwise_timeout  = config.get("pairwise_timeout",   8.0)
         self.n_closest_pairs   = config.get("n_closest_pairs",    3)
-        self.patience          = config.get("patience",          10)
-        self.global_timeout    = config.get("global_timeout",    None)
+        self.patience          = config.get("patience",           5)
+        # Global timeout cho toàn bộ vòng lặp optimize() (giây).
+        # None = không giới hạn (giữ behaviour cũ).
+        self.global_timeout    = config.get("global_timeout",     None)
 
         self.stat_single_improvements   = 0
         self.stat_pairwise_improvements = 0
-        self.stat_single_timeouts       = 0
-        self.stat_pairwise_timeouts     = 0
-
-        self._global_start: Optional[float] = None
-
-    # ------------------------------------------------------------------
-    def _remaining(self) -> Optional[float]:
-        """Giây còn lại trước khi hết global timeout. None nếu không giới hạn."""
-        if self.global_timeout is None or self._global_start is None:
-            return None
-        return max(0.0, self.global_timeout - (time.time() - self._global_start))
-
-    def _effective_timeout(self, config_timeout: float) -> float:
-        """
-        Per-call timeout thực tế = min(config_timeout, remaining - buffer).
-        Trả về 0.0 nếu không còn đủ thời gian → caller nên skip.
-        """
-        rem = self._remaining()
-        if rem is None:
-            return config_timeout
-        usable = rem - self._POOL_CLEANUP_BUFFER
-        return min(config_timeout, max(0.0, usable))
+        # Đếm số lần bị timeout ở cấp per-call (để debug)
+        self.stat_single_timeouts   = 0
+        self.stat_pairwise_timeouts = 0
 
     # ------------------------------------------------------------------
     def compute_route_cost(self, route: List[int]) -> int:
@@ -438,38 +361,48 @@ class AdvancedCVRPOptimizer:
     def compute_total_cost(self, routes: Dict[int, List[int]]) -> float:
         return sum(self.compute_route_cost(r) for r in routes.values())
 
-    def find_closest_route_pairs(self, routes: Dict[int, List[int]]) -> List[Tuple[int, int]]:
+    # ------------------------------------------------------------------
+    def find_closest_route_pairs(
+        self, routes: Dict[int, List[int]]
+    ) -> List[Tuple[int, int]]:
         route_ids = list(routes.keys())
-        if len(route_ids) < 2: return []
+        if len(route_ids) < 2:
+            return []
         pair_scores = []
         for i, j in combinations(route_ids, 2):
             ri, rj = routes[i], routes[j]
             if not ri or not rj: continue
-            min_dist = min(self.distances[c1, c2] for c1 in ri for c2 in rj)
+            min_dist = min(
+                self.distances[c1, c2] for c1 in ri for c2 in rj
+            )
             pair_scores.append((min_dist, i, j))
         pair_scores.sort()
         return [(i, j) for _, i, j in pair_scores[:self.n_closest_pairs]]
 
     # ------------------------------------------------------------------
-    def optimize_single_route_safe(self, route: List[int]) -> Tuple[List[int], int]:
+    def optimize_single_route_safe(
+        self, route: List[int]
+    ) -> Tuple[List[int], int]:
+        """
+        Per-call timeout: spawn process độc lập, chờ tối đa
+        single_timeout giây. Nếu RC2 không xong trong thời gian đó,
+        terminate process và trả về route gốc.
+        Lý do dùng process thay vì thread: RC2 là C extension,
+        không release GIL → thread timeout không hoạt động.
+        """
         if len(route) <= 1:
             return route, self.compute_route_cost(route)
         if len(route) > self.max_single_size:
             return route, self.compute_route_cost(route)
 
-        eff = self._effective_timeout(self.single_timeout)
-        if eff <= 0:
-            logging.info("    [Skip Single] Global timeout sắp hết.")
-            return route, self.compute_route_cost(route)
-
         pool = multiprocessing.Pool(processes=1)
         res  = pool.apply_async(_solve_single_worker, (route, self.distances))
         try:
-            opt_r, opt_c = res.get(timeout=eff)
+            opt_r, opt_c = res.get(timeout=self.single_timeout)
             return opt_r, opt_c
         except multiprocessing.TimeoutError:
             self.stat_single_timeouts += 1
-            logging.warning(f"    [Timeout] Single MaxSAT ({eff:.1f}s). Skip.")
+            logging.warning("    [Timeout] Single MaxSAT bị kẹt. Đã skip.")
             return route, self.compute_route_cost(route)
         except Exception:
             return route, self.compute_route_cost(route)
@@ -477,15 +410,13 @@ class AdvancedCVRPOptimizer:
             pool.terminate()
             pool.join()
 
-    def optimize_route_pair_safe(self, route1: List[int], route2: List[int]) -> Tuple[List[int], List[int], int, bool]:
+    def optimize_route_pair_safe(
+        self, route1: List[int], route2: List[int]
+    ) -> Tuple[List[int], List[int], int, bool]:
+        """Per-call timeout tương tự cho pairwise MaxSAT."""
         if not route1 and not route2:
             return [], [], 0, True
         if len(route1) + len(route2) > self.max_pairwise_size:
-            return [], [], float('inf'), False
-
-        eff = self._effective_timeout(self.pairwise_timeout)
-        if eff <= 0:
-            logging.info("    [Skip Pair] Global timeout sắp hết.")
             return [], [], float('inf'), False
 
         pool = multiprocessing.Pool(processes=1)
@@ -494,11 +425,11 @@ class AdvancedCVRPOptimizer:
             (route1, route2, self.distances, self.demands, self.capacity)
         )
         try:
-            r1, r2, cost, success = res.get(timeout=eff)
+            r1, r2, cost, success = res.get(timeout=self.pairwise_timeout)
             return r1, r2, cost, success
         except multiprocessing.TimeoutError:
             self.stat_pairwise_timeouts += 1
-            logging.warning(f"    [Timeout] Pairwise MaxSAT ({eff:.1f}s). Skip.")
+            logging.warning("    [Timeout] Pairwise MaxSAT bị kẹt. Đã skip.")
             return [], [], float('inf'), False
         except Exception:
             return [], [], float('inf'), False
@@ -507,10 +438,13 @@ class AdvancedCVRPOptimizer:
             pool.join()
 
     # ------------------------------------------------------------------
-    def try_relocate(self, routes):
+    def try_relocate(
+        self, routes: Dict[int, List[int]]
+    ) -> Tuple[Dict[int, List[int]], float, bool]:
         best_routes = {k: list(v) for k, v in routes.items()}
         best_cost   = self.compute_total_cost(routes)
         improved    = False
+
         for src_id in list(routes.keys()):
             for dst_id in list(routes.keys()):
                 if src_id == dst_id: continue
@@ -523,84 +457,116 @@ class AdvancedCVRPOptimizer:
                     for j in range(len(dst_route) + 1):
                         new_src = src_route[:i] + src_route[i+1:]
                         new_dst = dst_route[:j] + [customer] + dst_route[j:]
-                        if (self.compute_route_cost(new_src) + self.compute_route_cost(new_dst)
-                                < self.compute_route_cost(src_route) + self.compute_route_cost(dst_route)):
+                        if (self.compute_route_cost(new_src)
+                                + self.compute_route_cost(new_dst)
+                                < self.compute_route_cost(src_route)
+                                + self.compute_route_cost(dst_route)):
                             test = {k: list(v) for k, v in routes.items()}
                             test[src_id] = new_src
                             test[dst_id] = new_dst
                             total = self.compute_total_cost(test)
                             if total < best_cost:
-                                best_cost, best_routes, improved = total, test, True
+                                best_cost   = total
+                                best_routes = test
+                                improved    = True
         return best_routes, best_cost, improved
 
-    def try_exchange(self, routes):
+    def try_exchange(
+        self, routes: Dict[int, List[int]]
+    ) -> Tuple[Dict[int, List[int]], float, bool]:
         best_routes = {k: list(v) for k, v in routes.items()}
         best_cost   = self.compute_total_cost(routes)
         improved    = False
+
         for id1, id2 in combinations(list(routes.keys()), 2):
             route1, route2 = routes[id1], routes[id2]
             for i, c1 in enumerate(route1):
                 for j, c2 in enumerate(route2):
-                    d1 = sum(self.demands[c] for c in route1) - self.demands[c1] + self.demands[c2]
-                    d2 = sum(self.demands[c] for c in route2) - self.demands[c2] + self.demands[c1]
-                    if d1 > self.capacity or d2 > self.capacity: continue
+                    d1 = (sum(self.demands[c] for c in route1)
+                          - self.demands[c1] + self.demands[c2])
+                    d2 = (sum(self.demands[c] for c in route2)
+                          - self.demands[c2] + self.demands[c1])
+                    if d1 > self.capacity or d2 > self.capacity:
+                        continue
                     nr1 = route1[:i] + [c2] + route1[i+1:]
                     nr2 = route2[:j] + [c1] + route2[j+1:]
-                    if (self.compute_route_cost(nr1) + self.compute_route_cost(nr2)
-                            < self.compute_route_cost(route1) + self.compute_route_cost(route2)):
+                    if (self.compute_route_cost(nr1)
+                            + self.compute_route_cost(nr2)
+                            < self.compute_route_cost(route1)
+                            + self.compute_route_cost(route2)):
                         test = {k: list(v) for k, v in routes.items()}
-                        test[id1] = nr1; test[id2] = nr2
+                        test[id1] = nr1
+                        test[id2] = nr2
                         total = self.compute_total_cost(test)
                         if total < best_cost:
-                            best_cost, best_routes, improved = total, test, True
+                            best_cost   = total
+                            best_routes = test
+                            improved    = True
         return best_routes, best_cost, improved
 
     # ------------------------------------------------------------------
-    def optimize(self, initial_routes: Dict[int, List[int]], max_iterations: int = 100) -> Tuple[Dict[int, List[int]], float]:
-        routes      = {k: list(v) for k, v in initial_routes.items()}
-        best_cost   = self.compute_total_cost(routes)
+    def optimize(
+        self,
+        initial_routes: Dict[int, List[int]],
+        max_iterations: int = 100,
+    ) -> Tuple[Dict[int, List[int]], float]:
+        """
+        Vòng lặp chính.
+        Global timeout (nếu được cấu hình) được kiểm tra ở ĐẦU mỗi
+        iteration — không phải giữa chừng — để đảm bảo mỗi iteration
+        hoàn thành nguyên vẹn trước khi dừng.
+        """
+        routes     = {k: list(v) for k, v in initial_routes.items()}
+        best_cost  = self.compute_total_cost(routes)
         best_routes = {k: list(v) for k, v in routes.items()}
 
-        self._global_start = time.time()
+        global_start = time.time()
 
         logging.info("=========================================")
         logging.info("BẮT ĐẦU VÒNG LẶP OPTIMIZE (MaxSAT-RC2)")
         logging.info(f" -> Max Single Size   : {self.max_single_size}")
-        logging.info(f" -> Single Timeout    : {self.single_timeout}s (config, sẽ co theo global)")
-        logging.info(f" -> Max Pairwise Size : {self.max_pairwise_size}")
-        logging.info(f" -> Pairwise Timeout  : {self.pairwise_timeout}s (config, sẽ co theo global)")
+        logging.info(f" -> Per-call Timeout  : single={self.single_timeout}s"
+                     f"  pair={self.pairwise_timeout}s")
         logging.info(f" -> Global Timeout    : "
                      f"{'không giới hạn' if self.global_timeout is None else str(self.global_timeout) + 's'}")
+        logging.info(f" -> Max Pairwise Size : {self.max_pairwise_size}")
         logging.info(f" -> Closest Pairs     : {self.n_closest_pairs}")
         logging.info(f" -> Patience          : {self.patience}")
         logging.info(f" -> Max Iterations    : {max_iterations}")
         logging.info(f"Chi phí khởi điểm: {best_cost:.2f}")
         logging.info("=========================================")
 
-        iteration            = 0
+        iteration          = 0
         no_improvement_count = 0
 
         while iteration < max_iterations and no_improvement_count < self.patience:
-            rem = self._remaining()
-            if rem is not None and rem <= 0:
-                logging.info(f"[Global Timeout] Dừng trước iteration {iteration+1}.")
-                break
+            # --- Kiểm tra global timeout ở đầu mỗi iteration ---
+            if self.global_timeout is not None:
+                elapsed_global = time.time() - global_start
+                if elapsed_global >= self.global_timeout:
+                    logging.info(
+                        f"[Global Timeout] {elapsed_global:.1f}s >= "
+                        f"{self.global_timeout}s. Dừng sớm sau {iteration} iterations."
+                    )
+                    break
 
             iteration += 1
             improved   = False
-            rem_str = "∞" if rem is None else f"{rem:.0f}s"
-            logging.info(f"--- Iteration {iteration}/{max_iterations} (còn {rem_str}) ---")
+            logging.info(f"--- Iteration {iteration}/{max_iterations} ---")
 
+            # Phase 1: Relocate
             routes, new_r_cost, reloc_imp = self.try_relocate(routes)
             if reloc_imp:
                 improved = True
                 logging.info(f"  [P1] Relocate → {new_r_cost:.2f}")
 
+            # Phase 2: Exchange
             routes, new_e_cost, exch_imp = self.try_exchange(routes)
             if exch_imp:
                 improved = True
                 logging.info(f"  [P2] Exchange → {new_e_cost:.2f}")
 
+            # Phase 3: Single MaxSAT (per-call timeout bảo vệ mỗi lần gọi)
             single_imp = 0
             for v, route in routes.items():
                 old_c = self.compute_route_cost(route)
@@ -613,6 +579,7 @@ class AdvancedCVRPOptimizer:
             if single_imp > 0:
                 logging.info(f"  [P3] MaxSAT Single cải thiện: {single_imp}")
 
+            # Phase 4: Pairwise MaxSAT (per-call timeout bảo vệ mỗi lần gọi)
             pairs = self.find_closest_route_pairs(routes)
             for i, j in pairs:
                 r1, r2 = routes[i], routes[j]
@@ -624,6 +591,7 @@ class AdvancedCVRPOptimizer:
                     self.stat_pairwise_improvements += 1
                     logging.info(f"  [P4] MaxSAT Pairwise ({i},{j}) giảm: {old_c - new_c}")
 
+            # Đánh giá cuối iteration
             current_cost = self.compute_total_cost(routes)
             if current_cost < best_cost - 0.001:
                 best_cost   = current_cost
@@ -632,15 +600,18 @@ class AdvancedCVRPOptimizer:
                 logging.info(f"=> ITER {iteration}: BEST = {best_cost:.2f}")
             else:
                 no_improvement_count += 1
-                logging.info(f"=> ITER {iteration}: Không cải thiện ({no_improvement_count}/{self.patience})")
+                logging.info(
+                    f"=> ITER {iteration}: Không cải thiện "
+                    f"({no_improvement_count}/{self.patience})"
+                )
 
             if not improved:
                 no_improvement_count += 1
 
-        total_elapsed = time.time() - self._global_start
+        total_elapsed = time.time() - global_start
         logging.info(
             f"Hoàn thành. Final cost: {best_cost:.2f} | "
-            f"Thời gian: {total_elapsed:.1f}s | "
+            f"Thời gian optimize: {total_elapsed:.1f}s | "
             f"Single timeouts: {self.stat_single_timeouts} | "
             f"Pairwise timeouts: {self.stat_pairwise_timeouts}"
         )
@@ -650,12 +621,15 @@ class AdvancedCVRPOptimizer:
 # =====================================================================
 # MAIN SOLVER ROUTINE
 # =====================================================================
-
 def solve_advanced(
     filepath: str,
     config: Dict[str, Any] = None,
     max_iterations: int = 50,
 ) -> Tuple[Dict[int, List[int]], int, Dict[str, Any]]:
+    """
+    Trả về: (opt_routes, total_cost, stats)
+    stats bao gồm 'solver_name' để runner ghi vào CSV.
+    """
     import re
     from classes.instance import Instance
     from classes.clarke_wright import ClarkeWright
@@ -669,8 +643,11 @@ def solve_advanced(
     cvrp.load()
     cvrp.distances = np.floor(cvrp.distances + 0.5).astype(int)
     n_vehicles = int(re.search(r'-k(\d+)', filepath).group(1))
-    logging.info(f"Dimension={cvrp.dimension}, K={n_vehicles}, Capacity={cvrp.capacity}")
+    logging.info(
+        f"Dimension={cvrp.dimension}, K={n_vehicles}, Capacity={cvrp.capacity}"
+    )
 
+    # Step 1: Clarke-Wright
     logging.info("--- Step 1: Clarke-Wright ---")
     try:
         cw_time, cw_routes = ClarkeWright.run(cvrp, n_vehicles)
@@ -680,14 +657,19 @@ def solve_advanced(
     cw_cost = sum(route.cost for route in cw_routes.values())
     logging.info(f"  CW cost={cw_cost}, time={cw_time:.3f}s")
 
+    # Step 2: Two-Opt
     logging.info("--- Step 2: Two-Opt ---")
     two_opt_time, two_opt_routes = TwoOpt.run(cw_routes)
     two_opt_cost = sum(route.cost for route in two_opt_routes.values())
     logging.info(f"  2-opt cost={two_opt_cost}, time={two_opt_time:.3f}s")
 
-    routes = {i: list(route.value) for i, (_, route) in enumerate(two_opt_routes.items())}
+    routes = {
+        i: list(route.value)
+        for i, (_, route) in enumerate(two_opt_routes.items())
+    }
     routes = {i: r for i, r in routes.items() if r}
 
+    # Step 3: MaxSAT Optimization
     logging.info("--- Step 3: MaxSAT Optimization ---")
     start_time = time.time()
     optimizer = AdvancedCVRPOptimizer(
@@ -700,24 +682,28 @@ def solve_advanced(
     opt_routes, opt_cost = optimizer.optimize(routes, max_iterations=max_iterations)
     maxsat_time = time.time() - start_time
 
+    # Thống kê trả về runner
     stats = {
-        "solver_name":        SOLVER_NAME,
+        "solver_name":        SOLVER_NAME,          # → cột Solver trong CSV
         "single_imp_count":   optimizer.stat_single_improvements,
         "pairwise_imp_count": optimizer.stat_pairwise_improvements,
         "single_timeouts":    optimizer.stat_single_timeouts,
         "pairwise_timeouts":  optimizer.stat_pairwise_timeouts,
     }
 
+    # Báo cáo log
     logging.info("=" * 70)
     logging.info("SUMMARY")
-    logging.info(f"  CW        : {cw_cost}")
-    logging.info(f"  + Two-Opt : {two_opt_cost}")
+    logging.info(f"  CW          : {cw_cost}")
+    logging.info(f"  + Two-Opt   : {two_opt_cost}")
     final_cost = int(opt_cost)
-    logging.info(f"  + MaxSAT  : {final_cost}")
-    logging.info(f"  Cải thiện : {cw_cost - final_cost}")
-    logging.info(f"  Single    : {stats['single_imp_count']} imp, {stats['single_timeouts']} timeouts")
-    logging.info(f"  Pairwise  : {stats['pairwise_imp_count']} imp, {stats['pairwise_timeouts']} timeouts")
-    logging.info(f"  Tổng TG   : {cw_time + two_opt_time + maxsat_time:.3f}s")
+    logging.info(f"  + MaxSAT    : {final_cost}")
+    logging.info(f"  Cải thiện   : {cw_cost - final_cost}")
+    logging.info(f"  Single imp  : {stats['single_imp_count']} lần "
+                 f"({stats['single_timeouts']} timeouts)")
+    logging.info(f"  Pairwise imp: {stats['pairwise_imp_count']} lần "
+                 f"({stats['pairwise_timeouts']} timeouts)")
+    logging.info(f"  Tổng thời gian: {cw_time + two_opt_time + maxsat_time:.3f}s")
 
     total_verify = 0
     for v, route in sorted(opt_routes.items()):
@@ -725,7 +711,10 @@ def solve_advanced(
             demand = sum(cvrp.demands[c] for c in route)
             cost   = optimizer.compute_route_cost(route)
             total_verify += cost
-            logging.info(f"  Route {v}: {route} (demand={demand}/{cvrp.capacity}, cost={cost})")
+            logging.info(
+                f"  Route {v}: {route} "
+                f"(demand={demand}/{cvrp.capacity}, cost={cost})"
+            )
     logging.info(f"Verified cost: {total_verify}")
 
     return opt_routes, total_verify, stats
@@ -733,13 +722,14 @@ def solve_advanced(
 
 if __name__ == "__main__":
     test_config = {
-        "max_single_size":   11,
-        "single_timeout":    60.0,
-        "max_pairwise_size":  9,
-        "pairwise_timeout":  600.0,
-        "n_closest_pairs":   12,
-        "patience":          20,
-        "global_timeout":   1200.0,
+    "max_single_size":   14,
+    "single_timeout":     5.0,
+    "max_pairwise_size": 16,
+    "pairwise_timeout":  10.0,
+    "n_closest_pairs":   12,
+    "patience":          20,
+    "global_timeout":   1200.0,
     }
+    max_iterations = 150
     filepath = sys.argv[1] if len(sys.argv) > 1 else "instances/E-n31-k7.vrp"
-    solve_advanced(filepath, config=test_config, max_iterations=150)
+    solve_advanced(filepath, config=test_config, max_iterations=max_iterations)

@@ -1,0 +1,7 @@
+Run_ID,Label,Instance,N,K,BKS,Cost_Found,Gap(%),Time(s),Max_Single,Single_Timeout,Max_Pair,Pair_Timeout,Num_Pairs,Patience,Max_Iter,Global_Timeout,Single_Imp_Count,Single_Timeouts,Pair_Imp_Count,Pair_Timeouts,Solver
+1,baseline_old,B-n31-k5,31,5,672,701,4.32,1203.12,14,5.0,16,10.0,12,20,150,1200.0,1,0,0,120,MaxSAT-RC2
+2,proposed_v1,B-n31-k5,31,5,672,701,4.32,581.51,11,10.0,12,20.0,5,10,150,1800.0,1,0,0,29,MaxSAT-RC2
+3,baseline_old,B-n31-k5,31,5,672,701,4.32,1200.87,11,60.0,9,600.0,12,20,150,1200.0,1,0,0,2,MaxSAT-RC2
+4,baseline_old,B-n31-k5,31,5,672,701,4.32,1198.23,11,60.0,9,600.0,12,20,150,1200.0,1,0,0,2,MaxSAT-RC2
+5,baseline_old,B-n51-k7,51,7,1032,1136,10.08,26.39,11,60.0,9,600.0,12,20,150,1200.0,7,0,0,0,MaxSAT-RC2
+6,baseline_old,B-n51-k7,51,7,1032,1193,15.60,1198.32,11,60.0,12,600.0,12,20,150,1200.0,2,0,0,2,MaxSAT-RC2
