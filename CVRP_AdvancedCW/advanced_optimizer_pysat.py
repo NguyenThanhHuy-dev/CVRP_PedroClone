@@ -429,6 +429,7 @@ class AdvancedCVRPOptimizer:
         self.stat_pairwise_improvements = 0
         self.stat_single_timeouts       = 0
         self.stat_pairwise_timeouts     = 0
+        self.stat_global_timeout        = False
 
         self._global_start: Optional[float] = None
 
@@ -589,6 +590,7 @@ class AdvancedCVRPOptimizer:
 
         while inner_iter < max_iterations and inner_no_imp < self.inner_patience:
             if self._is_timed_out():
+                self.stat_global_timeout = True
                 logging.info("  [Inner] GlobalTimeout → dừng inner.")
                 break
 
@@ -670,6 +672,7 @@ class AdvancedCVRPOptimizer:
 
         while outer_iter < max_iterations and outer_no_imp < self.outer_patience:
             if self._is_timed_out():
+                self.stat_global_timeout = True
                 logging.info(f"[GlobalTimeout] Dừng trước outer iter {outer_iter+1}.")
                 break
 
@@ -692,6 +695,7 @@ class AdvancedCVRPOptimizer:
                 logging.info(f"  [Outer] Inner cải thiện → best={best_cost:.2f}")
 
             if self._is_timed_out():
+                self.stat_global_timeout = True
                 logging.info("[GlobalTimeout] Sau inner loop.")
                 break
 
@@ -702,6 +706,7 @@ class AdvancedCVRPOptimizer:
 
             for i, j in pairs:
                 if self._is_timed_out():
+                    self.stat_global_timeout = True
                     logging.info("    [P4] GlobalTimeout → dừng pairwise.")
                     break
                 r1, r2 = routes[i], routes[j]

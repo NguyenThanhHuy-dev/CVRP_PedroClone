@@ -10,8 +10,10 @@ import os
 import time
 import logging
 import numpy as np
-from typing import List, Tuple, Dict, Any
+from typing import List, Optional, Tuple, Dict, Any
 from itertools import combinations
+
+from cplex_optimizer import CplexPairwiseRouteOptimizer, CplexSingleRouteOptimizer
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -25,6 +27,10 @@ logging.basicConfig(
         logging.StreamHandler(sys.stdout)
     ]
 )
+
+# =====================================================================
+# ADVANCED CVRP OPTIMIZER (100% CPLEX)
+# =====================================================================
 
 # =====================================================================
 # ADVANCED CVRP OPTIMIZER (100% CPLEX)
@@ -46,10 +52,31 @@ class AdvancedCVRPOptimizer:
         self.pairwise_timeout = config.get("pairwise_timeout", 10.0)
         self.n_closest_pairs = config.get("n_closest_pairs", 5)
         self.patience = config.get("patience", 5)
+        self.global_timeout = config.get("global_timeout", None) # ĐÃ THÊM GLOBAL TIMEOUT
         
         self.stat_single_improvements = 0
         self.stat_pairwise_improvements = 0
+        self.stat_single_timeouts = 0
+        self.stat_pairwise_timeouts = 0
+        self.stat_single_timeouts = 0
+        self.stat_pairwise_timeouts = 0
+        self.stat_global_timeout = False
+        
+        self._global_start: Optional[float] = None
 
+    # --- HÀM TÍNH THỜI GIAN ĐỘNG ---
+    def _remaining(self) -> Optional[float]:
+        if self.global_timeout is None or self._global_start is None:
+            return None
+        return max(0.0, self.global_timeout - (time.time() - self._global_start))
+
+    def _effective_timeout(self, config_timeout: float) -> float:
+        rem = self._remaining()
+        if rem is None:
+            return config_timeout
+        return min(config_timeout, max(0.0, rem))
+
+    # --- HÀM TÍNH TOÁN COST ---
     def compute_route_cost(self, route: List[int]) -> int:
         if not route: return 0
         cost = self.distances[0, route[0]]
@@ -62,7 +89,6 @@ class AdvancedCVRPOptimizer:
         return sum(self.compute_route_cost(r) for r in routes.values())
 
     def compute_total_cost_with_penalty(self, routes: Dict[int, List[int]]) -> float:
-        """Tính tổng chi phí, bao gồm cả tiền phạt nếu tuyến vượt tải trọng."""
         dist = self.compute_pure_cost(routes)
         penalty = sum(max(0, sum(self.demands[c] for c in r) - self.capacity) for r in routes.values())
         return dist + (self.penalty_rate * penalty)
@@ -82,59 +108,68 @@ class AdvancedCVRPOptimizer:
         pair_scores.sort()
         return [(i, j) for _, i, j in pair_scores[:self.n_closest_pairs]]
 
+    # --- HÀM TỐI ƯU GỌI BỘ GIẢI CPLEX ---
     def optimize_single_route_safe(self, route: List[int]) -> Tuple[List[int], int]:
         if len(route) <= 1: return route, self.compute_route_cost(route)
         if len(route) > self.max_single_size: return route, self.compute_route_cost(route)
 
+        eff = self._effective_timeout(self.single_timeout)
+        if eff <= 0: 
+            self.stat_single_timeouts += 1
+            return route, self.compute_route_cost(route)
+
         try:
-            from cplex_optimizer import CplexSingleRouteOptimizer  # <--- SỬA Ở ĐÂY
-            opt = CplexSingleRouteOptimizer(route, self.distances, timeout=self.single_timeout)
+            # GỌI LỚP CPLEX SINGLE TỪ FILE HIỆN TẠI
+            # (Đảm bảo lớp CplexSingleRouteOptimizer có tồn tại ở phần trên của file)
+            opt = CplexSingleRouteOptimizer(route, self.distances, timeout=eff)
             opt_r, opt_c = opt.optimize()
             return opt_r, opt_c
         except Exception as e:
-            logging.error(f"Lỗi CPLEX Single: {e}")
+            logging.error(f"Lỗi Solver Single (CPLEX): {e}")
+            self.stat_single_timeouts += 1
             return route, self.compute_route_cost(route)
 
     def optimize_route_pair_safe(self, route1: List[int], route2: List[int]) -> Tuple[List[int], List[int], int, bool]:
         if not route1 and not route2: return [], [], 0, True
         if len(route1) + len(route2) > self.max_pairwise_size: return [], [], float('inf'), False 
 
+        eff = self._effective_timeout(self.pairwise_timeout)
+        if eff <= 0: 
+            self.stat_pairwise_timeouts += 1
+            return [], [], float('inf'), False
+
         try:
-            from cplex_optimizer import CplexPairwiseRouteOptimizer  # <--- SỬA Ở ĐÂY
-            opt = CplexPairwiseRouteOptimizer(route1, route2, self.distances, self.demands, self.capacity, timeout=self.pairwise_timeout)
+            # GỌI LỚP CPLEX PAIRWISE TỪ FILE HIỆN TẠI
+            # (Đảm bảo lớp CplexPairwiseRouteOptimizer có tồn tại ở phần trên của file)
+            opt = CplexPairwiseRouteOptimizer(route1, route2, self.distances, self.demands, self.capacity, timeout=eff)
             r1, r2, cost, success = opt.optimize()
             return r1, r2, cost, success
         except Exception as e:
-            logging.error(f"Lỗi CPLEX Pairwise: {e}")
+            logging.error(f"Lỗi Solver Pairwise (CPLEX): {e}")
+            self.stat_pairwise_timeouts += 1
             return [], [], float('inf'), False
 
+    # --- HÀM RELOCATE VÀ EXCHANGE ---
     def try_relocate(self, routes: Dict[int, List[int]]) -> Tuple[Dict[int, List[int]], float, bool]:
         best_routes = {k: list(v) for k, v in routes.items()}
         best_cost = self.compute_total_cost_with_penalty(routes)
         improved = False
         route_ids = list(routes.keys())
-
         for src_id in route_ids:
             for dst_id in route_ids:
                 if src_id == dst_id: continue
                 src_route = routes[src_id]
                 dst_route = routes[dst_id]
-                
                 for i, customer in enumerate(src_route):
-                    # Soft Capacity: Cho phép nhét lố tải trọng để thoát cực trị địa phương
                     for j in range(len(dst_route) + 1):
                         new_src = src_route[:i] + src_route[i+1:]
                         new_dst = dst_route[:j] + [customer] + dst_route[j:]
-                        
                         test_routes = {k: list(v) for k, v in routes.items()}
                         test_routes[src_id] = new_src
                         test_routes[dst_id] = new_dst
-                        
                         total_cost = self.compute_total_cost_with_penalty(test_routes)
                         if total_cost < best_cost - 0.001:
-                            best_cost = total_cost
-                            best_routes = test_routes
-                            improved = True
+                            best_cost, best_routes, improved = total_cost, test_routes, True
         return best_routes, best_cost, improved
 
     def try_exchange(self, routes: Dict[int, List[int]]) -> Tuple[Dict[int, List[int]], float, bool]:
@@ -142,38 +177,35 @@ class AdvancedCVRPOptimizer:
         best_cost = self.compute_total_cost_with_penalty(routes)
         improved = False
         route_ids = list(routes.keys())
-
         for id1, id2 in combinations(route_ids, 2):
             route1, route2 = routes[id1], routes[id2]
             for i, c1 in enumerate(route1):
                 for j, c2 in enumerate(route2):
-                    # Soft Capacity
                     new_route1 = route1[:i] + [c2] + route1[i+1:]
                     new_route2 = route2[:j] + [c1] + route2[j+1:]
-                    
                     test_routes = {k: list(v) for k, v in routes.items()}
                     test_routes[id1] = new_route1
                     test_routes[id2] = new_route2
-                    
                     total_cost = self.compute_total_cost_with_penalty(test_routes)
                     if total_cost < best_cost - 0.001:
-                        best_cost = total_cost
-                        best_routes = test_routes
-                        improved = True
+                        best_cost, best_routes, improved = total_cost, test_routes, True
         return best_routes, best_cost, improved
 
+    # --- KIẾN TRÚC VND LOOP ĐÃ CẬP NHẬT ---
     def optimize(self, initial_routes: Dict[int, List[int]], max_iterations: int = 100) -> Tuple[Dict[int, List[int]], float]:
         routes = {k: list(v) for k, v in initial_routes.items()}
         best_cost = self.compute_total_cost_with_penalty(routes)
         
+        self._global_start = time.time()
+        
         logging.info("=========================================")
-        logging.info("BẮT ĐẦU VÒNG LẶP OPTIMIZE (100% CPLEX)")
+        logging.info("BẮT ĐẦU VÒNG LẶP OPTIMIZE CPLEX (HYBRID LNS / VND)")
         logging.info(f" -> Max Single Size  : {self.max_single_size}")
         logging.info(f" -> Single Timeout   : {self.single_timeout}s")
         logging.info(f" -> Max Pairwise Size: {self.max_pairwise_size}")
         logging.info(f" -> Pairwise Timeout : {self.pairwise_timeout}s")
-        logging.info(f" -> Closest Pairs    : {self.n_closest_pairs}")
-        logging.info(f" -> Patience (No Imp): {self.patience}")
+        logging.info(f" -> Global Timeout   : {'không giới hạn' if self.global_timeout is None else str(self.global_timeout) + 's'}")
+        logging.info(f" -> Patience         : {self.patience}")
         logging.info(f" -> Max Iterations   : {max_iterations}")
         logging.info(f"Chi phí khởi điểm (kể cả phạt): {best_cost:.2f}")
         logging.info("=========================================")
@@ -182,48 +214,67 @@ class AdvancedCVRPOptimizer:
         no_improvement_count = 0
         
         while iteration < max_iterations and no_improvement_count < self.patience:
+            rem = self._remaining()
+            if rem is not None and rem <= 0:
+                self.stat_global_timeout = True
+                logging.info(f"[Global Timeout] Dừng trước iteration {iteration+1}.")
+                break
+
             iteration += 1
-            improved = False
-            logging.info(f"--- Đang chạy Iteration {iteration}/{max_iterations} ---")
+            rem_str = "∞" if rem is None else f"{rem:.0f}s"
+            logging.info(f"--- Iteration {iteration}/{max_iterations} (còn {rem_str}) ---")
             
-            # Phase 1: Relocate
-            routes, new_r_cost, reloc_imp = self.try_relocate(routes)
-            if reloc_imp:
-                improved = True
-                logging.info(f"  [P1] Relocate giảm chi phí xuống còn: {new_r_cost:.2f}")
+            # BƯỚC 1: VÒNG LẶP TRONG (Vắt kiệt Toán tử Nhẹ)
+            local_improved = True
+            inner_loop_count = 0
+            while local_improved:
+                inner_loop_count += 1
+                local_improved = False
+                if self._remaining() is not None and self._remaining() <= 0:
+                    self.stat_global_timeout = True
+                    break
 
-            # Phase 2: Exchange
-            routes, new_e_cost, exch_imp = self.try_exchange(routes)
-            if exch_imp:
-                improved = True
-                logging.info(f"  [P2] Exchange giảm chi phí xuống còn: {new_e_cost:.2f}")
+                routes, new_r_cost, reloc_imp = self.try_relocate(routes)
+                if reloc_imp:
+                    local_improved = True
+                    logging.info(f"  [Inner {inner_loop_count}] Relocate → {new_r_cost:.2f}")
 
-            # Phase 3: Single CPLEX
-            single_imp = 0
-            for v, route in routes.items():
-                old_c = self.compute_route_cost(route)
-                opt_r, opt_c = self.optimize_single_route_safe(route)
-                if opt_c < old_c:
-                    routes[v] = opt_r
-                    improved = True
-                    single_imp += (old_c - opt_c)
-                    self.stat_single_improvements += 1
-            if single_imp > 0:
-                logging.info(f"  [P3] CPLEX Single Route cải thiện được: {single_imp}")
+                routes, new_e_cost, exch_imp = self.try_exchange(routes)
+                if exch_imp:
+                    local_improved = True
+                    logging.info(f"  [Inner {inner_loop_count}] Exchange → {new_e_cost:.2f}")
 
-            # Phase 4: Pairwise CPLEX
+                single_imp = 0
+                for v, route in routes.items():
+                    old_c = self.compute_route_cost(route)
+                    opt_r, opt_c = self.optimize_single_route_safe(route)
+                    if opt_c < old_c:
+                        routes[v] = opt_r
+                        local_improved = True
+                        single_imp += (old_c - opt_c)
+                        self.stat_single_improvements += 1
+                if single_imp > 0:
+                    logging.info(f"  [Inner {inner_loop_count}] Single Route giảm: {single_imp}")
+
+            # BƯỚC 2: TOÁN TỬ NẶNG (Pairwise - Phá vỡ cấu trúc bằng CPLEX)
+            if self._remaining() is not None and self._remaining() <= 0: 
+                self.stat_global_timeout = True
+                break
+            
             pairs = self.find_closest_route_pairs(routes)
+            pairwise_success = False
             for i, j in pairs:
                 r1, r2 = routes[i], routes[j]
                 old_c = self.compute_route_cost(r1) + self.compute_route_cost(r2)
                 opt1, opt2, new_c, success = self.optimize_route_pair_safe(r1, r2)
                 if success and new_c < old_c:
                     routes[i], routes[j] = opt1, opt2
-                    improved = True
+                    pairwise_success = True
                     self.stat_pairwise_improvements += 1
-                    logging.info(f"  [P4] CPLEX Pairwise ({i},{j}) giảm: {old_c - new_c}")
+                    logging.info(f"  [P4] Pairwise ({i},{j}) thành công! Giảm: {old_c - new_c}")
+                    break # Chỉ cần sửa 1 cặp là cấu trúc xô lệch, quay lại Relocate ăn tiếp
 
-            # End Iteration Evaluation
+            # BƯỚC 3: ĐÁNH GIÁ
             current_cost = self.compute_total_cost_with_penalty(routes)
             if current_cost < best_cost - 0.001:
                 best_cost = current_cost
@@ -233,12 +284,10 @@ class AdvancedCVRPOptimizer:
                 no_improvement_count += 1
                 logging.info(f"=> ITER {iteration}: Không cải thiện (no_improve={no_improvement_count}/{self.patience})")
 
-            if not improved: no_improvement_count += 1
-            
         final_pure_cost = self.compute_pure_cost(routes)
-        logging.info(f"Hoàn thành tối ưu. Final Pure Cost: {final_pure_cost}")
+        total_elapsed = time.time() - self._global_start
+        logging.info(f"Hoàn thành tối ưu trong {total_elapsed:.1f}s. Final Pure Cost: {final_pure_cost}")
         return routes, final_pure_cost
-
 # =====================================================================
 # MAIN SOLVER ROUTINE
 # =====================================================================
@@ -290,7 +339,10 @@ def solve_advanced(filepath: str, config: Dict[str, Any] = None, max_iterations:
     
     stats = {
         "single_imp_count": optimizer.stat_single_improvements,
-        "pairwise_imp_count": optimizer.stat_pairwise_improvements
+        "pairwise_imp_count": optimizer.stat_pairwise_improvements,
+        "single_timeouts": optimizer.stat_single_timeouts,     # <-- THÊM DÒNG NÀY
+        "pairwise_timeouts": optimizer.stat_pairwise_timeouts, # <-- THÊM DÒNG NÀY
+        "global_timeout": optimizer.stat_global_timeout
     }
     
     logging.info("=" * 70)

@@ -1,0 +1,5 @@
+Instance,N,K,BKS,Runs,Best_Cost,Best_Gap(%),Avg_Cost,Avg_Gap(%),Last_Cost,Last_Gap(%),Last_Time(s),Max_Single,Max_Pair,Num_Pairs,Patience,Max_Iter,Single_Imp_Count,Pair_Imp_Count,Method,Solver
+B-n31-k5,31,5,672,3,679,1.04,679.00,1.04,679,1.04,26.96,11,10,12,20,150,1,2,gurobi,N/A
+B-n34-k5,34,5,788,2,829,5.20,829.00,5.20,829,5.20,75.80,11,10,12,20,150,3,0,gurobi,N/A
+B-n35-k5,35,5,955,2,970,1.57,970.00,1.57,970,1.57,3.92,11,10,12,20,150,1,0,gurobi,N/A
+B-n38-k6,38,6,805,1,861,6.96,861.00,6.96,861,6.96,78.79,11,10,12,20,150,1,1,gurobi,N/A

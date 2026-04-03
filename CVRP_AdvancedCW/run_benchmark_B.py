@@ -79,16 +79,16 @@ MAX_ITERATIONS = 150
 USE_TEST_CONFIG = True
 TEST_CONFIG = {
     "max_single_size":    11,
-    "single_timeout":     20.0,
-    "max_pairwise_size":  9,
-    "pairwise_timeout":   1000.0,
-    "n_closest_pairs":     15,
+    "single_timeout":     60.0,
+    "max_pairwise_size":  10,
+    "pairwise_timeout":  500.0,
+    "n_closest_pairs":     12,
     "patience":           20,
     "global_timeout":   1200.0,
 }
 BASE_CONFIGS = {
-    "gurobi": {"single_timeout":  5.0, "patience": 10},
-    "cplex":  {"single_timeout":  5.0, "patience": 10},
+    "gurobi": {"single_timeout":  5.0, "patience": 20},
+    "cplex":  {"single_timeout":  5.0, "patience": 20},
     "pysat":  {"single_timeout": 10.0, "patience": 20},
 }
 
@@ -100,25 +100,27 @@ def build_dynamic_config(n: int, k: int) -> dict:
         max_single   = max(40, int(avg * 1.5))
         max_pairwise = max(25, int(avg * 2.5))
         pair_timeout = min(40.0, max(15.0, avg * 1.0))
+        n_pairs      = 999 # <-- GUROBI QUÉT FULL CẶP
     elif METHOD == "cplex":
         max_single   = max(30, int(avg * 1.5))
         max_pairwise = max(20, int(avg * 2.5))
         pair_timeout = min(40.0, max(15.0, avg * 1.0))
+        n_pairs      = 999 # <-- CPLEX QUÉT FULL CẶP
     else:  # pysat — kích thước bài toán con bị giới hạn cứng
         max_single   = min(11, max(8,  int(avg * 1.0)))
         max_pairwise = min(12, max(8,  int(avg * 1.5)))
         pair_timeout = min(20.0, max(15.0, avg * 1.5))
+        n_pairs      = min(k, 5) # <-- PYSAT BỊ GIỚI HẠN CHẶT ĐỂ BẢO VỆ CPU
 
     return {
         "max_single_size":   max_single,
         "single_timeout":    base["single_timeout"],
         "max_pairwise_size": max_pairwise,
         "pairwise_timeout":  pair_timeout,
-        "n_closest_pairs":   min(k, 5),
+        "n_closest_pairs":   n_pairs, # <-- TRUYỀN BIẾN ĐỘNG VÀO ĐÂY
         "patience":          base["patience"],
         "global_timeout":    1800.0,
     }
-
 # =====================================================================
 # HELPERS
 # =====================================================================
@@ -225,6 +227,12 @@ def run_b_benchmark():
                 cfg = TEST_CONFIG.copy()
             else:
                 cfg = build_dynamic_config(n, k)
+                
+            # [ÉP ĐÈ AN TOÀN]: Bất chấp dùng cấu hình Test hay Dynamic, 
+            # Gurobi và CPLEX luôn được quyền quét toàn bộ các cặp tuyến.
+            if METHOD in ("gurobi", "cplex"):
+                cfg["n_closest_pairs"] = 999
+
             print(f"  [Config] single={cfg['max_single_size']} pair={cfg['max_pairwise_size']}"
                   f" stimeout={cfg['single_timeout']:.0f}s ptimeout={cfg['pairwise_timeout']:.0f}s"
                   f" pairs={cfg['n_closest_pairs']} patience={cfg['patience']}")

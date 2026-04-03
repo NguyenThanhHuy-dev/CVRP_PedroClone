@@ -28,6 +28,7 @@ from typing import Dict, Any, Optional
 _KEY_COLS = ("Instance", "Method")
 
 # Tất cả tên cột theo đúng thứ tự trong file CSV
+# Tất cả tên cột theo đúng thứ tự trong file CSV
 FIELDNAMES = [
     # Định danh
     "Instance", "N", "K", "BKS",
@@ -41,10 +42,10 @@ FIELDNAMES = [
     "Max_Single", "Max_Pair", "Num_Pairs", "Patience", "Max_Iter",
     # Thống kê solver
     "Single_Imp_Count", "Pair_Imp_Count",
+    "S-Timeout", "P-Timeout", "G-Timeout", # <-- ĐÃ THÊM 3 CỘT NÀY
     # Phân loại
     "Method", "Solver",
 ]
-
 
 def _make_key(row: Dict[str, str]) -> tuple:
     return (row.get("Instance", ""), row.get("Method", ""))
@@ -126,6 +127,9 @@ def upsert_row(
             "Max_Iter":         str(max_iterations),
             "Single_Imp_Count": str(stats.get("single_imp_count",   0)),
             "Pair_Imp_Count":   str(stats.get("pairwise_imp_count", 0)),
+            "S-Timeout":        str(stats.get("single_timeouts",    0)), # <-- THÊM
+            "P-Timeout":        str(stats.get("pairwise_timeouts",  0)), # <-- THÊM
+            "G-Timeout":        str(stats.get("global_timeout", False)), # <-- THÊM
             "Method":           method,
             "Solver":           stats.get("solver_name", "N/A"),
         }
@@ -157,6 +161,9 @@ def upsert_row(
             "Max_Iter":         str(max_iterations),
             "Single_Imp_Count": str(stats.get("single_imp_count",   0)),
             "Pair_Imp_Count":   str(stats.get("pairwise_imp_count", 0)),
+            "S-Timeout":        str(stats.get("single_timeouts",    0)), # <-- THÊM
+            "P-Timeout":        str(stats.get("pairwise_timeouts",  0)), # <-- THÊM
+            "G-Timeout":        str(stats.get("global_timeout", False)), # <-- THÊM
             "Solver":           stats.get("solver_name", "N/A"),
         })
         data[key] = old
