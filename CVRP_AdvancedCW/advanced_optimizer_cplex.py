@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 """
-Advanced CVRP Optimizer – 100% CPLEX MIP
-=========================================
-Không dùng Clarke-Wright, Two-Opt hay bất kỳ metaheuristic nào.
-Nghiệm khởi tạo: Greedy Nearest-Neighbor đảm bảo tải trọng hợp lệ.
-Toàn bộ cải thiện do Single-Route MIP (TSP) và Pairwise MIP đảm nhận.
+Advanced CVRP Optimizer – CPLEX MIP
+=====================================
+Nghiệm khởi tạo: Clarke-Wright + Two-Opt.
+Tối ưu hóa: Single-Route MIP (TSP) và Pairwise MIP (2-vehicle VRP) bằng CPLEX.
 
 Global timeout bắt buộc: 1200 giây.
 """
@@ -36,48 +35,6 @@ logging.basicConfig(
 
 GLOBAL_TIMEOUT_DEFAULT = 1200.0
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# KHỞI TẠO NGHIỆM
-# ──────────────────────────────────────────────────────────────────────────────
-
-def build_initial_routes(
-    n_customers: int,
-    demands: np.ndarray,
-    capacity: int,
-    n_vehicles: int,
-    distances: np.ndarray,
-) -> Dict[int, List[int]]:
-    """
-    Nghiệm khởi tạo bằng Greedy Nearest-Neighbor.
-    Đảm bảo tải trọng không vượt capacity.
-    """
-    customers = list(range(1, n_customers + 1))
-    customers.sort(key=lambda c: distances[0, c])
-
-    routes: Dict[int, List[int]] = {v: [] for v in range(n_vehicles)}
-    loads:  Dict[int, int]       = {v: 0  for v in range(n_vehicles)}
-
-    for c in customers:
-        d = int(demands[c])
-        best_v     = None
-        best_score = float("inf")
-        for v in range(len(routes)):
-            if loads[v] + d <= capacity:
-                sc = distances[routes[v][-1], c] if routes[v] else distances[0, c] + 1e6
-                if sc < best_score:
-                    best_score = sc
-                    best_v     = v
-        if best_v is not None:
-            routes[best_v].append(c)
-            loads[best_v] += d
-        else:
-            new_v = max(routes.keys()) + 1
-            routes[new_v] = [c]
-            loads[new_v]  = d
-
-    routes = {i: r for i, r in enumerate(v for v in routes.values() if v)}
-    return routes
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -306,10 +263,14 @@ def solve_advanced(
     config: Dict[str, Any] = None,
     max_iterations: int = 150,
 ) -> Tuple[Dict[int, List[int]], int, Dict[str, Any]]:
+    import re
     from classes.instance import Instance
+    from classes.clarke_wright import ClarkeWright
+    from classes.two_opt import TwoOpt
 
     if config is None:
         config = {}
+    # Bắt buộc global_timeout = 1200s
     config.setdefault("global_timeout", GLOBAL_TIMEOUT_DEFAULT)
 
     logging.info("=" * 70)
@@ -319,34 +280,35 @@ def solve_advanced(
     cvrp = Instance(filepath)
     cvrp.load()
     cvrp.distances = np.floor(cvrp.distances + 0.5).astype(int)
-
-    n_vehicles  = int(re.search(r"-k(\d+)", filepath).group(1))
-    n_customers = cvrp.dimension - 1
+    n_vehicles = int(re.search(r"-k(\d+)", filepath).group(1))
 
     logging.info(
-        f"Dimension={cvrp.dimension}  K={n_vehicles}  Capacity={cvrp.capacity}"
+        f"Thông tin dữ liệu: Dimension={cvrp.dimension}, K={n_vehicles}, Capacity={cvrp.capacity}"
     )
 
-    # --- Nghiệm khởi tạo ---
-    logging.info("--- Tạo nghiệm khởi tạo (Greedy Nearest-Neighbor) ---")
-    t0 = time.time()
-    initial_routes = build_initial_routes(
-        n_customers=n_customers,
-        demands=np.array(cvrp.demands),
-        capacity=cvrp.capacity,
-        n_vehicles=n_vehicles,
-        distances=cvrp.distances,
-    )
-    init_cost = sum(
-        (lambda r: (cvrp.distances[0, r[0]]
-                    + sum(cvrp.distances[r[i], r[i+1]] for i in range(len(r)-1))
-                    + cvrp.distances[r[-1], 0]) if r else 0)(route)
-        for route in initial_routes.values()
-    )
-    logging.info(f"  Nghiệm khởi tạo: Cost = {init_cost}  ({len(initial_routes)} routes)  ({time.time()-t0:.2f}s)")
+    logging.info("--- Step 1: Clarke-Wright Heuristic ---")
+    try:
+        cw_time, cw_routes = ClarkeWright.run(cvrp, n_vehicles)
+    except Exception:
+        logging.warning("⚠️ Clarke-Wright kẹt với K giới hạn. Chạy fallback K=999...")
+        cw_time, cw_routes = ClarkeWright.run(cvrp, 999)
+    cw_cost = sum(route.cost for route in cw_routes.values())
+    logging.info(f"  Kết quả CW: Cost = {cw_cost}, Time = {cw_time:.3f}s")
 
-    # --- Tối ưu MIP ---
-    logging.info("--- Tối ưu bằng CPLEX MIP ---")
+    logging.info("--- Step 2: Two-Opt Local Search ---")
+    two_opt_time, two_opt_routes = TwoOpt.run(cw_routes)
+    two_opt_cost = sum(route.cost for route in two_opt_routes.values())
+    logging.info(
+        f"  Kết quả Two-Opt: Cost = {two_opt_cost}, Time = {two_opt_time:.3f}s"
+    )
+
+    routes = {
+        i: list(route.value) for i, (_, route) in enumerate(two_opt_routes.items())
+    }
+    routes = {i: r for i, r in routes.items() if len(r) > 0}
+
+    logging.info("--- Step 3: Advanced Optimization (CPLEX MIP) ---")
+    start_time = time.time()
     optimizer = AdvancedCVRPOptimizer(
         distances=cvrp.distances,
         demands=np.array(cvrp.demands),
@@ -354,7 +316,8 @@ def solve_advanced(
         n_vehicles=n_vehicles,
         config=config,
     )
-    opt_routes, opt_cost = optimizer.optimize(initial_routes, max_iterations=max_iterations)
+    opt_routes, opt_cost = optimizer.optimize(routes, max_iterations=max_iterations)
+    opt_time = time.time() - start_time
 
     stats = {
         "single_imp_count":    optimizer.stat_single_improvements,
@@ -364,20 +327,26 @@ def solve_advanced(
         "global_timeout":      optimizer.stat_global_timeout,
     }
 
+    logging.info("=" * 70)
+    logging.info("BÁO CÁO TỔNG KẾT (SUMMARY)")
+    logging.info("=" * 70)
+    logging.info(f"  1. Chi phí Clarke-Wright:     {cw_cost}")
+    logging.info(f"  2. Chi phí sau Two-Opt:       {two_opt_cost}")
+    final_int_cost = int(opt_cost)
+    logging.info(f"  3. Chi phí sau CPLEX MIP:     {final_int_cost}")
+    logging.info(f"  => TỔNG CẢI THIỆN:            {cw_cost - final_int_cost}")
+    logging.info(
+        f"  => Số lần CPLEX Single cải thiện  : {stats['single_imp_count']} lần"
+    )
+    logging.info(
+        f"  => Số lần CPLEX Pairwise cải thiện: {stats['pairwise_imp_count']} lần"
+    )
+    logging.info(
+        f"  => TỔNG THỜI GIAN CHẠY:       {cw_time + two_opt_time + opt_time:.3f}s"
+    )
+
     total_verify = sum(
         optimizer.compute_route_cost(r) for r in opt_routes.values() if r
     )
-
-    logging.info("=" * 70)
-    logging.info("SUMMARY")
-    logging.info(f"  Init Cost  : {init_cost}")
-    logging.info(f"  Final Cost : {total_verify}")
-    logging.info(f"  Cải thiện  : {init_cost - total_verify}")
-    logging.info(f"  Single MIP cải thiện  : {stats['single_imp_count']} lần")
-    logging.info(f"  Pairwise MIP cải thiện: {stats['pairwise_imp_count']} lần")
-    logging.info(f"  Single timeout        : {stats['single_timeouts']}")
-    logging.info(f"  Pairwise timeout      : {stats['pairwise_timeouts']}")
-    logging.info(f"  Global timeout hit    : {stats['global_timeout']}")
-    logging.info("=" * 70)
 
     return opt_routes, total_verify, stats
