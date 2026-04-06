@@ -63,11 +63,11 @@ def build_dynamic_config(n: int, k: int) -> dict:
     if METHOD in ("gurobi", "cplex"):
         max_single   = max(20, min(35, int(avg * 2.0)))
         max_pairwise = max(16, min(28, int(avg * 3.0)))
-        pair_timeout = min(120.0, max(30.0, avg * 8.0))
+        pair_timeout = round(min(120.0, max(30.0, avg * 9.0)))
     else:  # pysat
         max_single   = 15
         max_pairwise = 16
-        pair_timeout = min(60.0, max(30.0, avg * 4.0))
+        pair_timeout = round(min(60.0, max(60.0, avg * 4.0)))
 
     # Bộ config SẠCH 100%, không còn rác n_pairs hay patience
     return {
@@ -159,7 +159,7 @@ def run_b_benchmark():
             suppressed = suppress_logging_to_console()
 
             opt_routes, opt_cost, stats = solve_advanced(
-                filepath, config=cfg, max_iterations=ALNS_ITERATIONS
+                filepath, config=cfg, max_iterations=ALNS_ITERATIONS, target_cost=float(bks)
             )
 
             restore_logging_to_console(suppressed)

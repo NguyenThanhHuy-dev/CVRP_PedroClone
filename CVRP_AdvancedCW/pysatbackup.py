@@ -36,121 +36,153 @@ SOLVER_NAME = "MaxSAT-RC2"
 
 
 class SingleRouteOptimizer:
-    """ Giải TSP 1 xe bằng Incremental Max-SAT (Lazy Sub-tour Elimination) """
     def __init__(self, customers: List[int], distances: np.ndarray):
         self.customers = customers
         self.n = len(customers) + 1
         self.distances = distances
-        self.l2g = {0: 0}
+        self.local_to_global = {0: 0}
         for i, c in enumerate(customers):
-            self.l2g[i + 1] = c
+            self.local_to_global[i + 1] = c
 
-        self.ldist = np.zeros((self.n, self.n), dtype=int)
+        self.local_dist = np.zeros((self.n, self.n), dtype=int)
         for i in range(self.n):
             for j in range(self.n):
-                self.ldist[i, j] = distances[self.l2g[i], self.l2g[j]]
+                gi, gj = self.local_to_global[i], self.local_to_global[j]
+                self.local_dist[i, j] = distances[gi, gj]
 
         self.var_id = 0
-        self.con = [[0] * self.n for _ in range(self.n)]
+        self.conNet = [[0] * self.n for _ in range(self.n)]
+        self.rchNet = [[0] * self.n for _ in range(self.n)]
         self.wcnf = WCNF()
 
     def _nid(self) -> int:
         self.var_id += 1
         return self.var_id
 
+    def _exactly_one(self, lits: List[int]):
+        self.wcnf.append(lits)
+        for i in range(len(lits)):
+            for j in range(i + 1, len(lits)):
+                self.wcnf.append([-lits[i], -lits[j]])
+
     def optimize(self) -> Tuple[List[int], int]:
-        # 1. Khởi tạo BIẾN (Chỉ dùng biến Nối, XÓA HOÀN TOÀN biến Thứ tự r_ij)
+        # Biến kết nối
         for i in range(self.n):
             for j in range(self.n):
                 if i != j:
-                    self.con[i][j] = self._nid()
+                    self.conNet[i][j] = self._nid()
 
-        # 2. Hàm mục tiêu (Soft Clauses)
+        # Biến thứ tự (customer-customer only)
+        for i in range(1, self.n):
+            for j in range(i + 1, self.n):
+                v = self._nid()
+                self.rchNet[i][j] = v
+                self.rchNet[j][i] = -v
+
+        # Mệnh đề mềm: chi phí cạnh
         for i in range(self.n):
             for j in range(self.n):
-                if i != j and self.ldist[i, j] > 0:
-                    self.wcnf.append([-self.con[i][j]], weight=int(self.ldist[i, j]))
+                if i != j and self.local_dist[i, j] > 0:
+                    self.wcnf.append(
+                        [-self.conNet[i][j]], weight=int(self.local_dist[i, j])
+                    )
 
-        # 3. Mệnh đề CỨNG O(n^2) (Bậc đỉnh)
-        for i in range(self.n):
-            # Mỗi đỉnh có ĐÚNG 1 cạnh đi ra
-            out_e = [self.con[i][j] for j in range(self.n) if j != i]
-            self.wcnf.append(out_e)
-            for x in range(len(out_e)):
-                for y in range(x + 1, len(out_e)):
-                    self.wcnf.append([-out_e[x], -out_e[y]])
-            
-            # Mỗi đỉnh có ĐÚNG 1 cạnh đi vào
-            in_e = [self.con[j][i] for j in range(self.n) if j != i]
-            self.wcnf.append(in_e)
-            for x in range(len(in_e)):
-                for y in range(x + 1, len(in_e)):
-                    self.wcnf.append([-in_e[x], -in_e[y]])
+        # Ràng buộc 1: l(i,j) → r(i,j)
+        for i in range(1, self.n):
+            for j in range(1, self.n):
+                if i != j and self.rchNet[i][j] != 0:
+                    self.wcnf.append([-self.conNet[i][j], self.rchNet[i][j]])
 
-        # 4. GIẢI TĂNG DẦN (INCREMENTAL SAT)
+        # Ràng buộc 2: Transitivity
+        for a in range(1, self.n):
+            for b in range(1, self.n):
+                if a == b:
+                    continue
+                for c in range(1, self.n):
+                    if c == a or c == b:
+                        continue
+                    r_ab = self.rchNet[a][b]
+                    r_bc = self.rchNet[b][c]
+                    r_ac = self.rchNet[a][c]
+                    if r_ab != 0 and r_bc != 0 and r_ac != 0:
+                        self.wcnf.append([-r_ab, -r_bc, r_ac])
+
+        # Ràng buộc 3: Chain law
+        for a in range(1, self.n):
+            for b in range(1, self.n):
+                if a == b:
+                    continue
+                for c in range(1, self.n):
+                    if c == a or c == b:
+                        continue
+                    r_ab = self.rchNet[a][b]
+                    r_bc = self.rchNet[b][c]
+                    l_ac = self.conNet[a][c]
+                    if r_ab != 0 and r_bc != 0 and l_ac != 0:
+                        self.wcnf.append([-r_ab, -r_bc, -l_ac])
+
+        # Ràng buộc 4: Depot out exactly-one
+        self._exactly_one([self.conNet[0][j] for j in range(1, self.n)])
+
+        # Ràng buộc 5: Depot in exactly-one
+        self._exactly_one([self.conNet[i][0] for i in range(1, self.n)])
+
+        # Ràng buộc 6: Customer degree exactly-one in + out
+        for c in range(1, self.n):
+            self._exactly_one([self.conNet[i][c] for i in range(self.n) if i != c])
+            self._exactly_one([self.conNet[c][j] for j in range(self.n) if j != c])
+
+        # Ràng buộc 7: Depot-first
+        for j in range(1, self.n):
+            depot_to_j = self.conNet[0][j]
+            for k in range(1, self.n):
+                if k == j:
+                    continue
+                self.wcnf.append([-depot_to_j, -self.conNet[k][j]])
+
+        # Giải
         with RC2(self.wcnf, verbose=0) as solver:
-            while True:
-                model = solver.compute()
-                if not model:
-                    return self.customers, float('inf')
+            model = solver.compute()
+            if model:
+                positive = set(v for v in model if v > 0)
+                route, current, visited = [], 0, {0}
+                for _ in range(self.n - 1):
+                    for j in range(self.n):
+                        if j not in visited and self.conNet[current][j] in positive:
+                            gid = self.local_to_global[j]
+                            if gid != 0:
+                                route.append(gid)
+                            visited.add(j)
+                            current = j
+                            break
+                return route, solver.cost
 
-                pos = set(model)
-                active_edges = [(i, j) for i in range(self.n) for j in range(self.n) if i != j and self.con[i][j] in pos]
-                adj = {i: j for i, j in active_edges}
-
-                # Truy vết đường đi chính từ Kho (0)
-                main_tour = []
-                curr = 0
-                visited = set()
-                while True:
-                    visited.add(curr)
-                    nxt = adj.get(curr, -1)
-                    if nxt == -1 or nxt == 0:
-                        break
-                    main_tour.append(nxt)
-                    curr = nxt
-
-                # KỸ THUẬT 2: TÌM KIẾM VÀ CHÉM ĐỨT SUB-TOUR LƠ LỬNG
-                if len(visited) < self.n:
-                    unvisited = set(range(self.n)) - visited
-                    while unvisited:
-                        start = unvisited.pop()
-                        sub = [start]
-                        curr = adj.get(start, -1)
-                        while curr != -1 and curr != start:
-                            sub.append(curr)
-                            unvisited.discard(curr)
-                            curr = adj.get(curr, -1)
-                        
-                        # Sinh Mệnh đề cấm vòng (Lazy Sub-tour Elimination)
-                        nogood = []
-                        for idx in range(len(sub)):
-                            nogood.append(-self.con[sub[idx]][sub[(idx + 1) % len(sub)]])
-                        solver.add_clause(nogood)  # Nhồi ngược vào bộ giải đang chạy
-                    continue  # Quay lại vòng lặp, tìm nghiệm tiếp theo!
-
-                # Nếu qua được bài test Sub-tour -> Nghiệm hợp lệ
-                return [self.l2g[c] for c in main_tour], solver.cost
+        orig = int(self.local_dist[0, 1])
+        for i in range(1, self.n - 1):
+            orig += int(self.local_dist[i, i + 1])
+        orig += int(self.local_dist[self.n - 1, 0])
+        return self.customers, orig
 
 
 class PairwiseRouteOptimizer:
-    """ Giải VRP 2 xe bằng Incremental Max-SAT (Lazy Sub-tour + Lazy Capacity) """
-    def __init__(self, c1: List[int], c2: List[int], dist: np.ndarray, dem: np.ndarray, cap: int):
+
+    def __init__(
+        self, c1: List[int], c2: List[int], dist: np.ndarray, dem: np.ndarray, cap: int
+    ):
+        self.c1, self.c2 = c1, c2
         self.all_customers = c1 + c2
         self.n = len(self.all_customers) + 1
         self.dist, self.dem, self.cap = dist, dem, cap
-        
         self.l2g = {0: 0}
         for i, c in enumerate(self.all_customers):
             self.l2g[i + 1] = c
-            
         self.ldist = np.zeros((self.n, self.n), dtype=int)
         for i in range(self.n):
             for j in range(self.n):
                 self.ldist[i, j] = dist[self.l2g[i], self.l2g[j]]
-                
         self.var_id = 0
         self.con = [[[0] * self.n for _ in range(self.n)] for _ in range(2)]
+        self.rch = [[[0] * self.n for _ in range(self.n)] for _ in range(2)]
         self.asn = [0] * self.n
         self.wcnf = WCNF()
 
@@ -159,121 +191,134 @@ class PairwiseRouteOptimizer:
         return self.var_id
 
     def optimize(self) -> Tuple[List[int], List[int], int, bool]:
-        # 1. BIẾN QUYẾT ĐỊNH O(n^2)
         for v in range(2):
             for i in range(self.n):
                 for j in range(self.n):
-                    if i != j: self.con[v][i][j] = self._nid()
+                    if i != j:
+                        self.con[v][i][j] = self._nid()
+        for v in range(2):
+            for i in range(1, self.n):
+                for j in range(i + 1, self.n):
+                    vr = self._nid()
+                    self.rch[v][i][j] = vr
+                    self.rch[v][j][i] = -vr
         for i in range(1, self.n):
-            self.asn[i] = self._nid() # True = Xe 1, False = Xe 0
+            self.asn[i] = self._nid()
 
-        # 2. SOFT CLAUSES (Mục tiêu)
+        # Mệnh đề mềm
         for v in range(2):
             for i in range(self.n):
                 for j in range(self.n):
                     if i != j and self.ldist[i, j] > 0:
-                        self.wcnf.append([-self.con[v][i][j]], weight=int(self.ldist[i, j]))
+                        self.wcnf.append(
+                            [-self.con[v][i][j]], weight=int(self.ldist[i, j])
+                        )
 
-        # 3. RÀNG BUỘC CỨNG (Bậc đỉnh và Phân hoạch xe)
+        # Assignment consistency
         for i in range(1, self.n):
-            # Lấy các cạnh của Xe 1 và Xe 0
-            in1 = [self.con[1][j][i] for j in range(self.n) if j != i]
-            out1 = [self.con[1][i][j] for j in range(self.n) if j != i]
-            in0 = [self.con[0][j][i] for j in range(self.n) if j != i]
-            out0 = [self.con[0][i][j] for j in range(self.n) if j != i]
+            for v in range(2):
+                sign = 1 if v == 1 else -1
+                in_e = [self.con[v][j][i] for j in range(self.n) if j != i]
+                self.wcnf.append([-sign * self.asn[i]] + in_e)
+                for j in range(self.n):
+                    if j != i:
+                        self.wcnf.append([sign * self.asn[i], -self.con[v][j][i]])
+                        self.wcnf.append([sign * self.asn[i], -self.con[v][i][j]])
 
-            # Nếu gán Xe 1 (asn[i]=True): Xe 1 phải có đúng 1 vào, 1 ra. Xe 0 cấm đi qua.
-            self.wcnf.append([-self.asn[i]] + in1)
-            self.wcnf.append([-self.asn[i]] + out1)
-            for e in in1 + out1: self.wcnf.append([self.asn[i], -e])
-
-            # Nếu gán Xe 0 (asn[i]=False): Xe 0 phải có đúng 1 vào, 1 ra. Xe 1 cấm đi qua.
-            self.wcnf.append([self.asn[i]] + in0)
-            self.wcnf.append([self.asn[i]] + out0)
-            for e in in0 + out0: self.wcnf.append([-self.asn[i], -e])
-
-            # Chặn nhánh phụ (At-most-one)
-            for edges in [in1, out1, in0, out0]:
-                for x in range(len(edges)):
-                    for y in range(x+1, len(edges)):
-                        self.wcnf.append([-edges[x], -edges[y]])
-
-        # Ràng buộc tại Kho: Mỗi xe xuất phát 1 lần, về 1 lần
+        # Implication + Transitivity + Chain law (per vehicle)
         for v in range(2):
-            in_d = [self.con[v][i][0] for i in range(1, self.n)]
+            for i in range(1, self.n):
+                for j in range(1, self.n):
+                    if i != j and self.rch[v][i][j] != 0:
+                        self.wcnf.append([-self.con[v][i][j], self.rch[v][i][j]])
+            for a in range(1, self.n):
+                for b in range(1, self.n):
+                    if a == b:
+                        continue
+                    for c in range(1, self.n):
+                        if c in (a, b):
+                            continue
+                        rab, rbc, rac = (
+                            self.rch[v][a][b],
+                            self.rch[v][b][c],
+                            self.rch[v][a][c],
+                        )
+                        if rab != 0 and rbc != 0 and rac != 0:
+                            self.wcnf.append([-rab, -rbc, rac])
+            for a in range(1, self.n):
+                for b in range(1, self.n):
+                    if a == b:
+                        continue
+                    for c in range(1, self.n):
+                        if c in (a, b):
+                            continue
+                        rab, rbc, lac = (
+                            self.rch[v][a][b],
+                            self.rch[v][b][c],
+                            self.con[v][a][c],
+                        )
+                        if rab != 0 and rbc != 0 and lac != 0:
+                            self.wcnf.append([-rab, -rbc, -lac])
+
+        # Depot degree per vehicle (at-most-one; at-least-one không cần vì
+        # mỗi xe phải phục vụ ít nhất 1 khách — được đảm bảo bởi flow)
+        for v in range(2):
             out_d = [self.con[v][0][j] for j in range(1, self.n)]
-            self.wcnf.append(in_d)
+            in_d = [self.con[v][i][0] for i in range(1, self.n)]
             self.wcnf.append(out_d)
-            for x in range(len(in_d)):
-                for y in range(x+1, len(in_d)): self.wcnf.append([-in_d[x], -in_d[y]])
             for x in range(len(out_d)):
-                for y in range(x+1, len(out_d)): self.wcnf.append([-out_d[x], -out_d[y]])
+                for y in range(x + 1, len(out_d)):
+                    self.wcnf.append([-out_d[x], -out_d[y]])
+            self.wcnf.append(in_d)
+            for x in range(len(in_d)):
+                for y in range(x + 1, len(in_d)):
+                    self.wcnf.append([-in_d[x], -in_d[y]])
 
-        # 4. VÒNG LẶP INCREMENTAL (CỐT LÕI SOTA)
+        # Flow conservation per customer per vehicle
+        for i in range(1, self.n):
+            for v in range(2):
+                in_e = [self.con[v][j][i] for j in range(self.n) if j != i]
+                out_e = [self.con[v][i][j] for j in range(self.n) if j != i]
+                for x in range(len(in_e)):
+                    for y in range(x + 1, len(in_e)):
+                        self.wcnf.append([-in_e[x], -in_e[y]])
+                for x in range(len(out_e)):
+                    for y in range(x + 1, len(out_e)):
+                        self.wcnf.append([-out_e[x], -out_e[y]])
+                for ie in in_e:
+                    self.wcnf.append([-ie] + out_e)
+            # Mỗi customer phải được thăm bởi đúng 1 xe (at-least-one toàn cục)
+            alle = []
+            for v in range(2):
+                alle.extend([self.con[v][j][i] for j in range(self.n) if j != i])
+            self.wcnf.append(alle)
+
         with RC2(self.wcnf, verbose=0) as solver:
-            while True:
-                model = solver.compute()
-                if not model: return [], [], float("inf"), False
-
-                pos = set(model)
-                routes = [[], []]
-                subtours = []
-
+            model = solver.compute()
+            if model:
+                pos = set(v for v in model if v > 0)
+                rts = [[], []]
                 for v in range(2):
-                    active = [(i, j) for i in range(self.n) for j in range(self.n) if i != j and self.con[v][i][j] in pos]
-                    if not active: continue
-                    adj = {i: j for i, j in active}
-
-                    # Tuyến chính
-                    curr = 0
-                    visited = set()
-                    while True:
-                        visited.add(curr)
-                        nxt = adj.get(curr, -1)
-                        if nxt == -1 or nxt == 0: break
-                        routes[v].append(nxt)
-                        curr = nxt
-
-                    # Bắt lỗi Sub-tour lơ lửng
-                    all_nodes = set(adj.keys())
-                    unvisited = all_nodes - visited
-                    while unvisited:
-                        start = unvisited.pop()
-                        sub = [start]
-                        curr = adj.get(start, -1)
-                        while curr != -1 and curr != start:
-                            sub.append(curr)
-                            unvisited.discard(curr)
-                            curr = adj.get(curr, -1)
-                        subtours.append((v, sub))
-
-                # KỸ THUẬT 2: LAZY SUB-TOUR ELIMINATION
-                if subtours:
-                    for v, sub in subtours:
-                        nogood = [-self.con[v][sub[idx]][sub[(idx + 1) % len(sub)]] for idx in range(len(sub))]
-                        solver.add_clause(nogood)
-                    continue
-
-                # KỸ THUẬT 1: LAZY CAPACITY CHECKING
-                cap_violation = False
-                for v in range(2):
-                    dem_sum = sum(self.dem[self.l2g[c]] for c in routes[v])
-                    if dem_sum > self.cap:
-                        # Mệnh đề cấm: Cấm nhóm khách hàng này CÙNG NHAU LÊN XE v
-                        if v == 1:
-                            nogood = [-self.asn[c] for c in routes[v]] # Đang True thì cấm = False
+                    cur, vis = 0, {0}
+                    for _ in range(self.n - 1):
+                        for j in range(self.n):
+                            if j not in vis and self.con[v][cur][j] in pos:
+                                gid = self.l2g[j]
+                                if gid != 0:
+                                    rts[v].append(gid)
+                                vis.add(j)
+                                cur = j
+                                break
                         else:
-                            nogood = [self.asn[c] for c in routes[v]]  # Đang False thì cấm = True
-                        solver.add_clause(nogood)
-                        cap_violation = True
+                            break
+                if (
+                    sum(self.dem[c] for c in rts[0]) > self.cap
+                    or sum(self.dem[c] for c in rts[1]) > self.cap
+                ):
+                    return [], [], float("inf"), False
+                return rts[0], rts[1], solver.cost, True
+        return [], [], float("inf"), False
 
-                if cap_violation:
-                    continue
-
-                # HOÀN HẢO! Đã vượt qua cả Sub-tour lẫn Capacity
-                r0_global = [self.l2g[c] for c in routes[0]]
-                r1_global = [self.l2g[c] for c in routes[1]]
-                return r0_global, r1_global, solver.cost, True
 
 def _solve_single_worker(customers, distances):
     return SingleRouteOptimizer(customers, distances).optimize()

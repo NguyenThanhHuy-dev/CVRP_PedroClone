@@ -43,7 +43,7 @@ FIELDNAMES = [
     # Kết quả lần chạy mới nhất
     "Last_Cost", "Last_Gap(%)", "Last_Time(s)",
     # Tham số config (lần chạy mới nhất)
-    "Max_Single", "Max_Pair", "Num_Pairs", "Patience", "Max_Iter",
+    "Max_Single", "Max_Pair", "Max_Iter",
     "Single_Timeout(s)", "Pair_Timeout(s)", "Global_Timeout(s)",
     # Thống kê solver
     "Single_Imp", "Pair_Imp",
@@ -108,8 +108,6 @@ def upsert_row(
     row_cfg = {
         "Max_Single":        _cfg("max_single_size"),
         "Max_Pair":          _cfg("max_pairwise_size"),
-        "Num_Pairs":         _cfg("n_closest_pairs"),
-        "Patience":          _cfg("patience"),
         "Max_Iter":          str(max_iterations),
         "Single_Timeout(s)": _cfg("single_timeout"),
         "Pair_Timeout(s)":   _cfg("pairwise_timeout"),
