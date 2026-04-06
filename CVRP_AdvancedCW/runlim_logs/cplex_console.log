@@ -1,0 +1,89 @@
+[INFO] Đang nạp solver: CPLEX...
+
+======================================================================
+BENCHMARK B-SET  |  METHOD: CPLEX  |  23 instances
+ALNS Iterations  : 150
+Single Timeout   : 40.0s
+KẾT QUẢ LƯU VÀO  : results/benchmark_B_cplex.csv
+======================================================================
+
+[01/23] B-n31-k5 (N=31, K=5, BKS=672) ← lần đầu chạy
+  [Config] single=20 pair=18 s_to=40s p_to=56s
+  -> Cost: 677 | Gap: +0.74% | Time: 809.4s
+  -> S-Imp: 4 | P-Imp: 7
+  -> Runs=1 | Best=677 (0.74%) | Avg=677.00 (0.74%)
+
+[02/23] B-n34-k5 (N=34, K=5, BKS=788) ← lần đầu chạy
+  [Config] single=20 pair=20 s_to=40s p_to=61s
+  -> Cost: 788 | Gap: +0.00% | Time: 882.7s
+  -> S-Imp: 4 | P-Imp: 8
+  -> Runs=1 | Best=788 (0.00%) | Avg=788.00 (0.00%)
+
+[03/23] B-n35-k5 (N=35, K=5, BKS=955) ← lần đầu chạy
+  [Config] single=20 pair=21 s_to=40s p_to=63s
+  -> Cost: 955 | Gap: +0.00% | Time: 760.8s
+  -> S-Imp: 5 | P-Imp: 3
+  -> Runs=1 | Best=955 (0.00%) | Avg=955.00 (0.00%)
+
+[04/23] B-n38-k6 (N=38, K=6, BKS=805) ← lần đầu chạy
+  [Config] single=20 pair=19 s_to=40s p_to=57s
+  -> Cost: 817 | Gap: +1.49% | Time: 737.2s
+  -> S-Imp: 4 | P-Imp: 5
+  -> Runs=1 | Best=817 (1.49%) | Avg=817.00 (1.49%)
+
+[05/23] B-n39-k5 (N=39, K=5, BKS=549) ← lần đầu chạy
+  [Config] single=20 pair=23 s_to=40s p_to=70s
+  -> Cost: 558 | Gap: +1.64% | Time: 934.2s
+  -> S-Imp: 6 | P-Imp: 4
+  -> Runs=1 | Best=558 (1.64%) | Avg=558.00 (1.64%)
+
+[06/23] B-n41-k6 (N=41, K=6, BKS=829) ← lần đầu chạy
+  [Config] single=20 pair=20 s_to=40s p_to=62s
+  -> Cost: 886 | Gap: +6.88% | Time: 1198.0s
+  -> S-Imp: 4 | P-Imp: 8
+  -> Runs=1 | Best=886 (6.88%) | Avg=886.00 (6.88%)
+
+[07/23] B-n43-k6 (N=43, K=6, BKS=742) ← lần đầu chạy
+  [Config] single=20 pair=21 s_to=40s p_to=64s
+  -> Cost: 770 | Gap: +3.77% | Time: 1198.1s
+  -> S-Imp: 6 | P-Imp: 5
+  -> Runs=1 | Best=770 (3.77%) | Avg=770.00 (3.77%)
+
+[08/23] B-n44-k7 (N=44, K=7, BKS=909) ← lần đầu chạy
+  [Config] single=20 pair=18 s_to=40s p_to=57s
+  -> Cost: 929 | Gap: +2.20% | Time: 1198.0s
+  -> S-Imp: 6 | P-Imp: 5
+  -> Runs=1 | Best=929 (2.20%) | Avg=929.00 (2.20%)
+
+[09/23] B-n45-k5 (N=45, K=5, BKS=751) ← lần đầu chạy
+  [Config] single=20 pair=27 s_to=40s p_to=81s
+  -> Cost: 751 | Gap: +0.00% | Time: 1198.1s
+  -> S-Imp: 5 | P-Imp: 6
+  -> Runs=1 | Best=751 (0.00%) | Avg=751.00 (0.00%)
+
+[10/23] B-n45-k6 (N=45, K=6, BKS=678) ← lần đầu chạy
+  [Config] single=20 pair=22 s_to=40s p_to=68s
+  -> Cost: 691 | Gap: +1.92% | Time: 1198.0s
+  -> S-Imp: 4 | P-Imp: 9
+  -> Runs=1 | Best=691 (1.92%) | Avg=691.00 (1.92%)
+
+[11/23] B-n50-k8 (N=50, K=8, BKS=1312) ← lần đầu chạy
+  [Config] single=20 pair=18 s_to=40s p_to=56s
+  -> Cost: 1333 | Gap: +1.60% | Time: 1198.1s
+  -> S-Imp: 6 | P-Imp: 11
+  -> Runs=1 | Best=1333 (1.60%) | Avg=1333.00 (1.60%)
+
+[12/23] B-n50-k7 (N=50, K=7, BKS=741) ← lần đầu chạy
+  [Config] single=20 pair=21 s_to=40s p_to=64s
+  -> Cost: 741 | Gap: +0.00% | Time: 1198.0s
+  -> S-Imp: 7 | P-Imp: 11
+  -> Runs=1 | Best=741 (0.00%) | Avg=741.00 (0.00%)
+
+[13/23] B-n51-k7 (N=51, K=7, BKS=1032) ← lần đầu chạy
+  [Config] single=20 pair=21 s_to=40s p_to=66s
+  -> Cost: 1256 | Gap: +21.71% | Time: 1198.1s
+  -> S-Imp: 7 | P-Imp: 8
+  -> Runs=1 | Best=1256 (21.71%) | Avg=1256.00 (21.71%)
+
+[14/23] B-n52-k7 (N=52, K=7, BKS=747) ← lần đầu chạy
+  [Config] single=20 pair=22 s_to=40s p_to=67s

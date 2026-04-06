@@ -1,0 +1,148 @@
+[INFO] Đang nạp solver: PYSAT...
+
+======================================================================
+BENCHMARK B-SET  |  METHOD: PYSAT  |  23 instances
+ALNS Iterations  : 150
+Single Timeout   : 40.0s
+KẾT QUẢ LƯU VÀO  : results/benchmark_B_pysat.csv
+======================================================================
+
+[01/23] B-n31-k5 (N=31, K=5, BKS=672) ← đã có 1 lần chạy, best=672
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 676 | Gap: +0.60% | Time: 438.0s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=2 | Best=672 (0.00%) | Avg=674.00 (0.30%)
+
+[02/23] B-n34-k5 (N=34, K=5, BKS=788) ← đã có 1 lần chạy, best=788
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 788 | Gap: +0.00% | Time: 4.6s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=2 | Best=788 (0.00%) | Avg=788.00 (0.00%)
+
+[03/23] B-n35-k5 (N=35, K=5, BKS=955) ← đã có 1 lần chạy, best=955
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 955 | Gap: +0.00% | Time: 0.2s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=2 | Best=955 (0.00%) | Avg=955.00 (0.00%)
+
+[04/23] B-n38-k6 (N=38, K=6, BKS=805) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 805 | Gap: +0.00% | Time: 4.6s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=805 (0.00%) | Avg=805.00 (0.00%)
+
+[05/23] B-n39-k5 (N=39, K=5, BKS=549) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 550 | Gap: +0.18% | Time: 381.3s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=550 (0.18%) | Avg=550.00 (0.18%)
+
+[06/23] B-n41-k6 (N=41, K=6, BKS=829) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 839 | Gap: +1.21% | Time: 915.1s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=839 (1.21%) | Avg=839.00 (1.21%)
+
+[07/23] B-n43-k6 (N=43, K=6, BKS=742) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 742 | Gap: +0.00% | Time: 14.1s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=742 (0.00%) | Avg=742.00 (0.00%)
+
+[08/23] B-n44-k7 (N=44, K=7, BKS=909) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 909 | Gap: +0.00% | Time: 13.0s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=909 (0.00%) | Avg=909.00 (0.00%)
+
+[09/23] B-n45-k5 (N=45, K=5, BKS=751) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 758 | Gap: +0.93% | Time: 238.2s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=758 (0.93%) | Avg=758.00 (0.93%)
+
+[10/23] B-n45-k6 (N=45, K=6, BKS=678) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 696 | Gap: +2.65% | Time: 729.0s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=696 (2.65%) | Avg=696.00 (2.65%)
+
+[11/23] B-n50-k8 (N=50, K=8, BKS=1312) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 1322 | Gap: +0.76% | Time: 1198.0s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=1322 (0.76%) | Avg=1322.00 (0.76%)
+
+[12/23] B-n50-k7 (N=50, K=7, BKS=741) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 741 | Gap: +0.00% | Time: 2.4s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=741 (0.00%) | Avg=741.00 (0.00%)
+
+[13/23] B-n51-k7 (N=51, K=7, BKS=1032) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 1034 | Gap: +0.19% | Time: 1166.1s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=1034 (0.19%) | Avg=1034.00 (0.19%)
+
+[14/23] B-n52-k7 (N=52, K=7, BKS=747) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 747 | Gap: +0.00% | Time: 7.3s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=747 (0.00%) | Avg=747.00 (0.00%)
+
+[15/23] B-n56-k7 (N=56, K=7, BKS=707) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 707 | Gap: +0.00% | Time: 15.0s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=707 (0.00%) | Avg=707.00 (0.00%)
+
+[16/23] B-n57-k7 (N=57, K=7, BKS=1153) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 1156 | Gap: +0.26% | Time: 789.3s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=1156 (0.26%) | Avg=1156.00 (0.26%)
+
+[17/23] B-n57-k9 (N=57, K=9, BKS=1598) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 1631 | Gap: +2.07% | Time: 1198.0s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=1631 (2.07%) | Avg=1631.00 (2.07%)
+
+[18/23] B-n63-k10 (N=63, K=10, BKS=1496) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 1556 | Gap: +4.01% | Time: 1198.0s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=1556 (4.01%) | Avg=1556.00 (4.01%)
+
+[19/23] B-n64-k9 (N=64, K=9, BKS=861) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 874 | Gap: +1.51% | Time: 1198.0s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=874 (1.51%) | Avg=874.00 (1.51%)
+
+[20/23] B-n66-k9 (N=66, K=9, BKS=1316) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 1331 | Gap: +1.14% | Time: 1198.0s
+  -> S-Imp: 1 | P-Imp: 0
+  -> Runs=1 | Best=1331 (1.14%) | Avg=1331.00 (1.14%)
+
+[21/23] B-n67-k10 (N=67, K=10, BKS=1032) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 1050 | Gap: +1.74% | Time: 1198.0s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=1050 (1.74%) | Avg=1050.00 (1.74%)
+
+[22/23] B-n68-k9 (N=68, K=9, BKS=1272) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 1291 | Gap: +1.49% | Time: 1198.0s
+  -> S-Imp: 0 | P-Imp: 0
+  -> Runs=1 | Best=1291 (1.49%) | Avg=1291.00 (1.49%)
+
+[23/23] B-n78-k10 (N=78, K=10, BKS=1221) ← lần đầu chạy
+  [Config] single=15 pair=16 s_to=40s p_to=60s
+  -> Cost: 1248 | Gap: +2.21% | Time: 1198.0s
+  -> S-Imp: 1 | P-Imp: 0
+  -> Runs=1 | Best=1248 (2.21%) | Avg=1248.00 (2.21%)
+
+HOÀN THÀNH.

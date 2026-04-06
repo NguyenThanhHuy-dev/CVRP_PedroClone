@@ -1,0 +1,254 @@
+2026-04-02 15:55:08,870 - ======================================================================
+2026-04-02 15:55:08,871 - FILE: B-n51-k7.vrp
+2026-04-02 15:55:08,871 - ======================================================================
+2026-04-02 15:55:08,875 - Dimension=51, K=7, Capacity=100
+2026-04-02 15:55:08,875 - --- Step 1: Clarke-Wright ---
+2026-04-02 15:55:08,878 -   CW cost=1528, time=0.002s
+2026-04-02 15:55:08,878 - --- Step 2: Two-Opt ---
+2026-04-02 15:55:08,879 -   2-opt cost=1427, time=0.001s
+2026-04-02 15:55:08,879 - --- Step 3: MaxSAT Optimization ---
+2026-04-02 15:55:08,879 - =========================================
+2026-04-02 15:55:08,879 - BẮT ĐẦU VÒNG LẶP OPTIMIZE (MaxSAT-RC2)
+2026-04-02 15:55:08,880 -  -> Max Single Size   : 11
+2026-04-02 15:55:08,880 -  -> Single Timeout    : 60.0s (config, sẽ co theo global)
+2026-04-02 15:55:08,880 -  -> Max Pairwise Size : 12
+2026-04-02 15:55:08,880 -  -> Pairwise Timeout  : 600.0s (config, sẽ co theo global)
+2026-04-02 15:55:08,880 -  -> Global Timeout    : 1200.0s
+2026-04-02 15:55:08,880 -  -> Closest Pairs     : 12
+2026-04-02 15:55:08,880 -  -> Patience          : 20
+2026-04-02 15:55:08,880 -  -> Max Iterations    : 150
+2026-04-02 15:55:08,880 - Chi phí khởi điểm: 1427.00
+2026-04-02 15:55:08,880 - =========================================
+2026-04-02 15:55:08,880 - --- Iteration 1/150 (còn 1200s) ---
+2026-04-02 15:55:08,887 -   [P2] Exchange → 1348.00
+2026-04-02 15:55:10,573 -   [P3] MaxSAT Single cải thiện: 18
+2026-04-02 16:05:10,577 -     [Timeout] Pairwise MaxSAT (600.0s). Skip.
+2026-04-02 16:15:06,883 -     [Timeout] Pairwise MaxSAT (596.3s). Skip.
+2026-04-02 16:15:06,895 - => ITER 1: BEST = 1330.00
+2026-04-02 16:15:06,895 - --- Iteration 2/150 (còn 2s) ---
+2026-04-02 16:15:06,902 -   [P2] Exchange → 1277.00
+2026-04-02 16:15:06,902 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,902 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,902 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,902 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,902 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,902 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,902 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,903 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,903 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,903 - => ITER 2: BEST = 1277.00
+2026-04-02 16:15:06,903 - --- Iteration 3/150 (còn 2s) ---
+2026-04-02 16:15:06,910 -   [P2] Exchange → 1268.00
+2026-04-02 16:15:06,910 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,910 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,910 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,910 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,910 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,910 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,910 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,910 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,910 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,911 - => ITER 3: BEST = 1268.00
+2026-04-02 16:15:06,911 - --- Iteration 4/150 (còn 2s) ---
+2026-04-02 16:15:06,912 -   [P1] Relocate → 1266.00
+2026-04-02 16:15:06,918 -   [P2] Exchange → 1264.00
+2026-04-02 16:15:06,918 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,918 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,918 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,918 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,918 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,918 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,918 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,918 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,918 - => ITER 4: BEST = 1264.00
+2026-04-02 16:15:06,918 - --- Iteration 5/150 (còn 2s) ---
+2026-04-02 16:15:06,925 -   [P2] Exchange → 1263.00
+2026-04-02 16:15:06,926 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,926 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,926 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,926 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,926 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,926 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,926 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,926 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,926 - => ITER 5: BEST = 1263.00
+2026-04-02 16:15:06,926 - --- Iteration 6/150 (còn 2s) ---
+2026-04-02 16:15:06,928 -   [P1] Relocate → 1261.00
+2026-04-02 16:15:06,933 -   [P2] Exchange → 1226.00
+2026-04-02 16:15:06,933 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,933 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,933 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,933 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,933 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,933 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,933 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,934 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,934 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,934 - => ITER 6: BEST = 1226.00
+2026-04-02 16:15:06,934 - --- Iteration 7/150 (còn 2s) ---
+2026-04-02 16:15:06,941 -   [P2] Exchange → 1225.00
+2026-04-02 16:15:06,941 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,941 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,941 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,941 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,941 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,941 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,941 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,942 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,942 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,942 - => ITER 7: BEST = 1225.00
+2026-04-02 16:15:06,942 - --- Iteration 8/150 (còn 2s) ---
+2026-04-02 16:15:06,943 -   [P1] Relocate → 1224.00
+2026-04-02 16:15:06,949 -   [P2] Exchange → 1209.00
+2026-04-02 16:15:06,949 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,949 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,949 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,949 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,949 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,949 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,949 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,949 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,949 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,949 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,950 - => ITER 8: BEST = 1209.00
+2026-04-02 16:15:06,950 - --- Iteration 9/150 (còn 2s) ---
+2026-04-02 16:15:06,951 -   [P1] Relocate → 1200.00
+2026-04-02 16:15:06,956 -   [P2] Exchange → 1193.00
+2026-04-02 16:15:06,956 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,956 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,956 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,957 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,957 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,957 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,957 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,957 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,957 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,957 - => ITER 9: BEST = 1193.00
+2026-04-02 16:15:06,957 - --- Iteration 10/150 (còn 2s) ---
+2026-04-02 16:15:06,965 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,965 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,965 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,965 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,965 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,965 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,965 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,965 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,965 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,965 - => ITER 10: Không cải thiện (1/20)
+2026-04-02 16:15:06,966 - --- Iteration 11/150 (còn 2s) ---
+2026-04-02 16:15:06,973 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,973 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,973 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,973 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,973 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,973 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,973 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,973 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,973 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,973 - => ITER 11: Không cải thiện (3/20)
+2026-04-02 16:15:06,973 - --- Iteration 12/150 (còn 2s) ---
+2026-04-02 16:15:06,981 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,981 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,981 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,981 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,981 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,981 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,981 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,981 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,981 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,981 - => ITER 12: Không cải thiện (5/20)
+2026-04-02 16:15:06,981 - --- Iteration 13/150 (còn 2s) ---
+2026-04-02 16:15:06,988 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,988 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,988 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,988 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,988 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,988 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,989 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,989 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,989 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,989 - => ITER 13: Không cải thiện (7/20)
+2026-04-02 16:15:06,989 - --- Iteration 14/150 (còn 2s) ---
+2026-04-02 16:15:06,996 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,996 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,996 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,996 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,996 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,996 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,996 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:06,997 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,997 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:06,997 - => ITER 14: Không cải thiện (9/20)
+2026-04-02 16:15:06,997 - --- Iteration 15/150 (còn 2s) ---
+2026-04-02 16:15:07,004 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,004 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,004 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,004 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,004 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,004 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,004 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,004 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:07,005 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:07,005 - => ITER 15: Không cải thiện (11/20)
+2026-04-02 16:15:07,005 - --- Iteration 16/150 (còn 2s) ---
+2026-04-02 16:15:07,012 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,012 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,012 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,012 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,012 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,012 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,012 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,013 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:07,013 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:07,013 - => ITER 16: Không cải thiện (13/20)
+2026-04-02 16:15:07,013 - --- Iteration 17/150 (còn 2s) ---
+2026-04-02 16:15:07,020 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,020 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,020 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,020 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,020 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,020 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,020 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,020 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:07,020 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:07,020 - => ITER 17: Không cải thiện (15/20)
+2026-04-02 16:15:07,020 - --- Iteration 18/150 (còn 2s) ---
+2026-04-02 16:15:07,028 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,028 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,028 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,028 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,028 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,028 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,028 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,028 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:07,029 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:07,029 - => ITER 18: Không cải thiện (17/20)
+2026-04-02 16:15:07,029 - --- Iteration 19/150 (còn 2s) ---
+2026-04-02 16:15:07,036 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,036 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,036 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,036 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,036 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,036 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,036 -     [Skip Single] Global timeout sắp hết.
+2026-04-02 16:15:07,037 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:07,037 -     [Skip Pair] Global timeout sắp hết.
+2026-04-02 16:15:07,037 - => ITER 19: Không cải thiện (19/20)
+2026-04-02 16:15:07,037 - Hoàn thành. Final cost: 1193.00 | Thời gian: 1198.2s | Single timeouts: 0 | Pairwise timeouts: 2
+2026-04-02 16:15:07,037 - ======================================================================
+2026-04-02 16:15:07,037 - SUMMARY
+2026-04-02 16:15:07,037 -   CW        : 1528
+2026-04-02 16:15:07,037 -   + Two-Opt : 1427
+2026-04-02 16:15:07,037 -   + MaxSAT  : 1193
+2026-04-02 16:15:07,037 -   Cải thiện : 335
+2026-04-02 16:15:07,037 -   Single    : 2 imp, 0 timeouts
+2026-04-02 16:15:07,037 -   Pairwise  : 0 imp, 2 timeouts
+2026-04-02 16:15:07,037 -   Tổng TG   : 1198.161s
+2026-04-02 16:15:07,037 -   Route 0: [49, 30, 24, 22, 5, 36, 11, 6] (demand=92/100, cost=241)
+2026-04-02 16:15:07,037 -   Route 1: [9, 34, 38, 2, 10, 17, 16, 40] (demand=97/100, cost=228)
+2026-04-02 16:15:07,037 -   Route 2: [33, 48, 19, 3, 35, 1, 20] (demand=98/100, cost=198)
+2026-04-02 16:15:07,037 -   Route 3: [28, 7, 26, 4, 18] (demand=97/100, cost=117)
+2026-04-02 16:15:07,037 -   Route 4: [41, 27, 31, 32, 37, 12, 8] (demand=100/100, cost=152)
+2026-04-02 16:15:07,037 -   Route 5: [43, 14, 42, 13, 29, 39] (demand=100/100, cost=123)
+2026-04-02 16:15:07,038 -   Route 6: [21, 44, 25, 46, 45, 47, 23, 15, 50] (demand=100/100, cost=134)
+2026-04-02 16:15:07,038 - Verified cost: 1193
