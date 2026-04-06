@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 """
-Benchmark Runner for Uchoa X-Set Instances (SOTA)
-================================================
-Sử dụng: python run_benchmark_X.py [METHOD]
+Benchmark Runner for Augerat B-Set Instances (TEMP - CHỈ CHẠY 2 INSTANCES)
+=============================================
+Sử dụng: python run_benchmark_B_temp.py [METHOD]
+  METHOD: gurobi | cplex | pysat (mặc định: pysat)
 """
 
 import os
@@ -36,24 +37,22 @@ elif METHOD == "cplex":
 else:  
     from advanced_optimizer_pysat import solve_advanced
 
-# Thay đổi thư mục đích sang bộ X
-INSTANCE_DIR = os.path.join("instances", "X")
+INSTANCE_DIR = os.path.join("instances", "B")
 RESULTS_DIR  = "results"
-RESULT_FILE = os.path.join(RESULTS_DIR, f"benchmark_X_{METHOD}.csv")
+# Vẫn giữ nguyên file kết quả để nó tự động cập nhật (upsert) vào bảng chung
+RESULT_FILE = os.path.join(RESULTS_DIR, f"benchmark_B_{METHOD}.csv")
 
 if not os.path.exists(RESULTS_DIR):
     os.makedirs(RESULTS_DIR)
 
-# =====================================================================
 # SINGLE SOURCE OF TRUTH (CẤU HÌNH TRUNG TÂM)
-# =====================================================================
-# Bộ X lớn hơn nên ta tăng Iterations để ALNS có đủ thời gian phá/sửa
-ALNS_ITERATIONS = 300 
+ALNS_ITERATIONS = 150 
 
+# Thời gian tối đa cho hàm Max-SAT Single Route
 BASE_CONFIGS = {
     "gurobi": {"single_timeout":  40.0},
     "cplex":  {"single_timeout":  40.0},
-    "pysat":  {"single_timeout":  40.0},
+    "pysat":  {"single_timeout":  200.0},
 }
 
 def build_dynamic_config(n: int, k: int) -> dict:
@@ -61,16 +60,13 @@ def build_dynamic_config(n: int, k: int) -> dict:
     avg  = n / k if k > 0 else float(n)
 
     if METHOD in ("gurobi", "cplex"):
-        # Với bộ X, avg thường nhỏ (3-5), ta cần buffer rộng hơn
-        max_single   = max(20, min(35, int(avg * 2.5)))
-        max_pairwise = max(16, min(28, int(avg * 3.5)))
-        pair_timeout = float(math.ceil(min(150.0, max(40.0, avg * 10.0))))
+        max_single   = max(20, min(35, int(avg * 2.0)))
+        max_pairwise = max(16, min(28, int(avg * 3.0)))
+        pair_timeout = float(math.ceil(min(120.0, max(30.0, avg * 9.0))))
     else:  # pysat
-        max_single   = 15
-        max_pairwise = 16
-        # Tăng timeout cho bộ X vì mật độ khách hàng dày đặc hơn
-        pair_timeout = float(math.ceil(min(120.0, max(60.0, avg * 6.0))))
-
+        max_single   = 16
+        max_pairwise = 17
+        pair_timeout = float(math.ceil(min(120.0, max(120.0, avg * 4.0))))
     return {
         "max_single_size":   max_single,
         "single_timeout":    base["single_timeout"],
@@ -85,16 +81,14 @@ def get_bks_from_sol(sol_filepath: str) -> int:
     try:
         with open(sol_filepath, 'r') as f:
             for line in f:
-                # File .sol của bộ X thường ghi "Cost 1234" hoặc "obj 1234"
-                if line.strip().lower().startswith(('cost', 'obj')):
-                    parts = re.findall(r'\d+', line)
-                    if parts: return int(parts[0])
+                if line.strip().lower().startswith('cost'):
+                    parts = line.replace(':', '').split()
+                    if len(parts) >= 2: return int(parts[1])
     except Exception: pass
     return 0
 
 def get_instance_info(filename: str):
     name = filename.replace(".vrp", "")
-    # Nhận diện X-n101-k25
     n_match = re.search(r'-n(\d+)', name)
     k_match = re.search(r'-k(\d+)', name)
     n = int(n_match.group(1)) if n_match else 0
@@ -115,30 +109,27 @@ def restore_logging_to_console(suppressed_handlers):
         h.setLevel(logging.INFO)
 
 # HÀM CHÍNH
-def run_x_benchmark():
-    if not os.path.exists(INSTANCE_DIR):
-        print(f"[LỖI] Thư mục {INSTANCE_DIR} không tồn tại.")
-        return
+def run_b_benchmark():
+    if not os.path.exists(INSTANCE_DIR): return
 
-    # Lọc file bắt đầu bằng X-
-    x_files = sorted(
-        [f for f in os.listdir(INSTANCE_DIR) if f.startswith("X-") and f.endswith(".vrp")],
-        key=lambda f: get_instance_info(f)[1] 
-    )
+    # --- CHỈ CHỌN ĐÚNG 2 INSTANCE THEO YÊU CẦU ---
+    target_instances = ["B-n45-k6.vrp"]
+    b_files = [f for f in target_instances if os.path.exists(os.path.join(INSTANCE_DIR, f))]
 
-    if not x_files:
-        print(f"[INFO] Không tìm thấy file bộ X nào.")
+    if not b_files:
+        print("[LỖI] Không tìm thấy 2 file instance B-n45-k5.vrp và B-n45-k6.vrp trong thư mục.")
         return
 
     print("\n" + "=" * 70)
-    print(f"BENCHMARK X-SET  |  METHOD: {METHOD.upper()}  |  {len(x_files)} instances")
+    print(f"BENCHMARK B-SET (TEMP)  |  METHOD: {METHOD.upper()}  |  {len(b_files)} instances")
     print(f"ALNS Iterations  : {ALNS_ITERATIONS}")
+    print(f"Single Timeout   : {BASE_CONFIGS[METHOD]['single_timeout']}s")
     print(f"KẾT QUẢ LƯU VÀO  : {RESULT_FILE}")
     print("=" * 70)
 
     csv_data = load_csv(RESULT_FILE)
 
-    for idx, filename in enumerate(x_files):
+    for idx, filename in enumerate(b_files):
         name, n, k = get_instance_info(filename)
         filepath     = os.path.join(INSTANCE_DIR, filename)
         sol_filepath = os.path.join(INSTANCE_DIR, filename.replace(".vrp", ".sol"))
@@ -147,23 +138,22 @@ def run_x_benchmark():
         existing_key = (name, METHOD)
         if existing_key in csv_data:
             old_runs = csv_data[existing_key].get("Runs", "0")
-            print(f"\n[{idx+1:02d}/{len(x_files)}] {name} (N={n}, K={k}, BKS={bks}) ← đã chạy {old_runs} lần")
+            old_best = csv_data[existing_key].get("Best_Cost", "?")
+            print(f"\n[{idx+1:02d}/{len(b_files)}] {name} (N={n}, K={k}, BKS={bks}) ← đã có {old_runs} lần chạy, best={old_best}")
         else:
-            print(f"\n[{idx+1:02d}/{len(x_files)}] {name} (N={n}, K={k}, BKS={bks}) ← lần đầu chạy")
+            print(f"\n[{idx+1:02d}/{len(b_files)}] {name} (N={n}, K={k}, BKS={bks}) ← lần đầu chạy")
 
         cfg = build_dynamic_config(n, k)
-        
+        print(f"  [Config] single={cfg['max_single_size']} pair={cfg['max_pairwise_size']} "
+              f"s_to={cfg['single_timeout']:.0f}s p_to={cfg['pairwise_timeout']:.0f}s")
+
         start_t = time.time()
         suppressed = []
         try:
             suppressed = suppress_logging_to_console()
 
-            # Truyền target_cost=bks để kích hoạt Early Stopping
             opt_routes, opt_cost, stats = solve_advanced(
-                filepath, 
-                config=cfg, 
-                max_iterations=ALNS_ITERATIONS, 
-                target_cost=float(bks)
+                filepath, config=cfg, max_iterations=ALNS_ITERATIONS, target_cost=float(bks)
             )
 
             restore_logging_to_console(suppressed)
@@ -180,11 +170,14 @@ def run_x_benchmark():
             )
             save_csv(RESULT_FILE, csv_data)
 
+            row = csv_data[(name, METHOD)]
+            print(f"  -> Runs={row['Runs']} | Best={row['Best_Cost']} ({row['Best_Gap(%)']}%) | Avg={row['Avg_Cost']} ({row['Avg_Gap(%)']}%)")
+
         except Exception as e:
             restore_logging_to_console(suppressed)
-            print(f"  -> LỖI tại {name}: {e}")
+            print(f"  -> LỖI: {e}")
 
-    print("\nHOÀN THÀNH BỘ X.")
+    print("\nHOÀN THÀNH.")
 
 if __name__ == "__main__":
-    run_x_benchmark()
+    run_b_benchmark()

@@ -1,0 +1,71 @@
+2026-04-06 15:56:29,557 - ======================================================================
+2026-04-06 15:56:29,557 - FILE: B-n45-k5.vrp
+2026-04-06 15:56:29,557 - ======================================================================
+2026-04-06 15:56:29,561 - Dim=45 K=5 Cap=100
+2026-04-06 15:56:29,561 - --- Step 1: Clarke-Wright Heuristic ---
+2026-04-06 15:56:29,564 -   cost=1030 time=0.00s
+2026-04-06 15:56:29,564 - --- Step 2, 3, 4: Advanced Optimization Pipeline ---
+2026-04-06 15:56:29,564 - =========================================
+2026-04-06 15:56:29,564 - BẮT ĐẦU TUYẾN TRÌNH TỐI ƯU (PIPELINE)
+2026-04-06 15:56:29,564 - =========================================
+2026-04-06 15:56:29,564 - === GIAI ĐOẠN 2: LOCAL SEARCH ĐA TOÁN TỬ | Bắt đầu: 1030.00 ===
+2026-04-06 15:56:29,646 -   [LS Iter 1] Cải thiện cost: 1030.00 -> 830.00
+2026-04-06 15:56:29,705 - === KẾT THÚC GIAI ĐOẠN 2 | Đạt cực trị tại: 830.00 ===
+2026-04-06 15:56:29,705 - === BẮT ĐẦU CHẶNG 3: ALNS + GLS | Vòng lặp: 150 | Cost: 830.00 ===
+2026-04-06 15:56:30,197 -   [ALNS Iter 6] Related Destroy phá vỡ giới hạn -> BEST MỚI: 826.00
+2026-04-06 15:56:31,183 -   [GLS Iter 21] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-04-06 15:56:33,168 -   [ALNS Iter 47] Related Destroy phá vỡ giới hạn -> BEST MỚI: 801.00
+2026-04-06 15:56:34,201 -   [ALNS Iter 54] Related Destroy phá vỡ giới hạn -> BEST MỚI: 783.00
+2026-04-06 15:56:34,865 -   [ALNS Iter 59] Related Destroy phá vỡ giới hạn -> BEST MỚI: 771.00
+2026-04-06 15:56:34,971 -   [ALNS Iter 60] Random Destroy phá vỡ giới hạn -> BEST MỚI: 763.00
+2026-04-06 15:56:35,453 -   [ALNS Iter 66] Related Destroy phá vỡ giới hạn -> BEST MỚI: 762.00
+2026-04-06 15:56:37,031 -   [ALNS Iter 80] Related Destroy phá vỡ giới hạn -> BEST MỚI: 752.00
+2026-04-06 15:56:39,202 -   [GLS Iter 101] Cập nhật ma trận phạt do kẹt tải trọng liên tục.
+2026-04-06 15:56:43,971 - === KẾT THÚC CHẶNG 3 | Cost xuất sắc nhất đạt được: 752.00 ===
+2026-04-06 15:56:43,971 - === BẮT ĐẦU CHẶNG 4: MAX-SAT CHÍNH XÁC | Cost: 752.00 ===
+2026-04-06 15:56:43,971 -   [GĐ 4.1] Giải bài toán TSP trên từng tuyến đơn...
+2026-04-06 15:57:41,930 -     [S-Timeout 40.0s]
+2026-04-06 15:58:21,939 -     [S-Timeout 40.0s]
+2026-04-06 15:58:25,102 -   [GĐ 4.2] Xét từng cặp tuyến để phân bổ lại khách hàng...
+2026-04-06 15:58:25,102 -   --- Pairwise Iter 1 (còn 1084s) ---
+2026-04-06 16:00:25,106 -     [P-Timeout 120.0s]
+2026-04-06 16:02:25,122 -     [P-Timeout 120.0s]
+2026-04-06 16:04:25,144 -     [P-Timeout 120.0s]
+2026-04-06 16:06:25,163 -     [P-Timeout 120.0s]
+2026-04-06 16:08:25,186 -     [P-Timeout 120.0s]
+2026-04-06 16:08:25,208 -     -> Đã đạt cực trị toàn cục cho mọi cặp dưới ngưỡng. KẾT THÚC CHẶNG 4.
+2026-04-06 16:08:25,208 - HOÀN THÀNH PIPELINE. Final cost=752.00 | Time=715.6s
+2026-04-06 16:08:25,209 - ======================================================================
+2026-04-06 16:08:25,209 - CW Khởi tạo = 1030 → Sau Pipeline = 752
+2026-04-06 16:08:25,209 - Cải thiện so CW: 278
+2026-04-06 16:08:25,209 - Tổng thời gian: 715.6s
+2026-04-06 16:08:25,209 - Verified cost: 752
+2026-04-06 16:08:25,213 - ======================================================================
+2026-04-06 16:08:25,213 - FILE: B-n45-k6.vrp
+2026-04-06 16:08:25,213 - ======================================================================
+2026-04-06 16:08:25,218 - Dim=45 K=6 Cap=100
+2026-04-06 16:08:25,218 - --- Step 1: Clarke-Wright Heuristic ---
+2026-04-06 16:08:25,225 -   cost=888 time=0.01s
+2026-04-06 16:08:25,225 - --- Step 2, 3, 4: Advanced Optimization Pipeline ---
+2026-04-06 16:08:25,226 - =========================================
+2026-04-06 16:08:25,226 - BẮT ĐẦU TUYẾN TRÌNH TỐI ƯU (PIPELINE)
+2026-04-06 16:08:25,226 - =========================================
+2026-04-06 16:08:25,226 - === GIAI ĐOẠN 2: LOCAL SEARCH ĐA TOÁN TỬ | Bắt đầu: 888.00 ===
+2026-04-06 16:08:25,299 -   [LS Iter 1] Cải thiện cost: 888.00 -> 772.00
+2026-04-06 16:08:25,348 -   [LS Iter 2] Cải thiện cost: 772.00 -> 771.00
+2026-04-06 16:08:25,398 - === KẾT THÚC GIAI ĐOẠN 2 | Đạt cực trị tại: 771.00 ===
+2026-04-06 16:08:25,398 - === BẮT ĐẦU CHẶNG 3: ALNS + GLS | Vòng lặp: 150 | Cost: 771.00 ===
+2026-04-06 16:08:25,986 -   [GLS Iter 21] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-04-06 16:08:26,249 -   [ALNS Iter 24] Related Destroy phá vỡ giới hạn -> BEST MỚI: 742.00
+2026-04-06 16:08:26,450 -   [ALNS Iter 27] Related Destroy phá vỡ giới hạn -> BEST MỚI: 736.00
+2026-04-06 16:08:27,140 -   [ALNS Iter 40] Related Destroy phá vỡ giới hạn -> BEST MỚI: 726.00
+2026-04-06 16:08:28,117 -   [GLS Iter 61] Cập nhật ma trận phạt do kẹt tải trọng liên tục.
+2026-04-06 16:08:31,072 -   [GLS Iter 121] Cập nhật ma trận phạt do kẹt tải trọng liên tục.
+2026-04-06 16:08:31,986 -   [ALNS Iter 137] Related Destroy phá vỡ giới hạn -> BEST MỚI: 725.00
+2026-04-06 16:08:32,382 -   [ALNS Iter 145] Related Destroy phá vỡ giới hạn -> BEST MỚI: 722.00
+2026-04-06 16:08:32,735 -   [ALNS Iter 150] Random Destroy phá vỡ giới hạn -> BEST MỚI: 720.00
+2026-04-06 16:08:32,736 - === KẾT THÚC CHẶNG 3 | Cost xuất sắc nhất đạt được: 720.00 ===
+2026-04-06 16:08:32,736 - === BẮT ĐẦU CHẶNG 4: MAX-SAT CHÍNH XÁC | Cost: 720.00 ===
+2026-04-06 16:08:32,736 -   [GĐ 4.1] Giải bài toán TSP trên từng tuyến đơn...
+2026-04-06 16:08:34,078 -   [GĐ 4.2] Xét từng cặp tuyến để phân bổ lại khách hàng...
+2026-04-06 16:08:34,079 -   --- Pairwise Iter 1 (còn 1191s) ---

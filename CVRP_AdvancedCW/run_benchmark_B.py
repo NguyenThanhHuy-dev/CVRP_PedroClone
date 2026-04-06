@@ -13,6 +13,7 @@ import time
 import re
 import logging
 from csv_upsert import load_csv, save_csv, upsert_row
+import math
 
 VALID_METHODS = ("gurobi", "cplex", "pysat")
 
@@ -43,10 +44,7 @@ RESULT_FILE = os.path.join(RESULTS_DIR, f"benchmark_B_{METHOD}.csv")
 if not os.path.exists(RESULTS_DIR):
     os.makedirs(RESULTS_DIR)
 
-# =====================================================================
 # SINGLE SOURCE OF TRUTH (CẤU HÌNH TRUNG TÂM)
-# =====================================================================
-# Tham số ALNS sẽ dùng ở Chặng 3
 ALNS_ITERATIONS = 150 
 
 # Thời gian tối đa cho hàm Max-SAT Single Route
@@ -63,13 +61,11 @@ def build_dynamic_config(n: int, k: int) -> dict:
     if METHOD in ("gurobi", "cplex"):
         max_single   = max(20, min(35, int(avg * 2.0)))
         max_pairwise = max(16, min(28, int(avg * 3.0)))
-        pair_timeout = round(min(120.0, max(30.0, avg * 9.0)))
+        pair_timeout = float(math.ceil(min(120.0, max(30.0, avg * 9.0))))
     else:  # pysat
         max_single   = 15
         max_pairwise = 16
-        pair_timeout = round(min(60.0, max(60.0, avg * 4.0)))
-
-    # Bộ config SẠCH 100%, không còn rác n_pairs hay patience
+        pair_timeout = float(math.ceil(min(60.0, max(60.0, avg * 4.0))))
     return {
         "max_single_size":   max_single,
         "single_timeout":    base["single_timeout"],
@@ -78,9 +74,7 @@ def build_dynamic_config(n: int, k: int) -> dict:
         "global_timeout":    1200.0, 
     }
 
-# =====================================================================
 # HELPERS
-# =====================================================================
 def get_bks_from_sol(sol_filepath: str) -> int:
     if not os.path.exists(sol_filepath): return 0
     try:
@@ -113,9 +107,7 @@ def restore_logging_to_console(suppressed_handlers):
     for h in suppressed_handlers:
         h.setLevel(logging.INFO)
 
-# =====================================================================
 # HÀM CHÍNH
-# =====================================================================
 def run_b_benchmark():
     if not os.path.exists(INSTANCE_DIR): return
 

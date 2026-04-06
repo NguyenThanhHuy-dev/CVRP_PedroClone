@@ -483,7 +483,6 @@ class AdvancedCVRPOptimizer:
         return best_routes, best_cost, improved
 
     # ------------------------------------------------------------------
-    # ------------------------------------------------------------------
     def run_phase_2_local_search(self, routes: Dict[int, List[int]], silent: bool = False) -> Tuple[Dict[int, List[int]], float]:
         """ CHẶNG 2: TÌM KIẾM CỤC BỘ ĐA TOÁN TỬ """
         best_routes = {k: list(v) for k, v in routes.items()}
@@ -528,7 +527,6 @@ class AdvancedCVRPOptimizer:
             logging.info(f"=== KẾT THÚC GIAI ĐOẠN 2 | Đạt cực trị tại: {best_cost:.2f} ===")
             
         return best_routes, best_cost
-    # ------------------------------------------------------------------
 
 # ------------------------------------------------------------------
     def run_phase_3_alns(self, routes: Dict[int, List[int]], max_iterations: int, target_cost: float = 0.0) -> Tuple[Dict[int, List[int]], float]:
@@ -573,7 +571,7 @@ class AdvancedCVRPOptimizer:
 
             q = random.randint(q_min, q_max)
 
-            # Chọn toán tử bằng Cò quay (Roulette Wheel)
+            # Chọn toán tử random
             total_weight = sum(op_weights)
             probs = [w / total_weight for w in op_weights]
             op_idx = np.random.choice(3, p=probs)
@@ -601,7 +599,6 @@ class AdvancedCVRPOptimizer:
                     if it % 20 == 0:
                         logging.info(f"  [GLS Iter {it+1}] Cập nhật ma trận phạt do kẹt tải trọng liên tục.")
                 
-                # BỎ QUA VÒNG LẶP NÀY, ĐI TIẾP VÒNG ALNS TIẾP THEO
                 continue
 
             # Bước 3.3: Dùng Local Search (Chặng 2) để dọn dẹp và trượt xuống hố cực trị mới
@@ -650,9 +647,7 @@ class AdvancedCVRPOptimizer:
             f"=== BẮT ĐẦU CHẶNG 4: MAX-SAT CHÍNH XÁC | Cost: {best_cost:.2f} ==="
         )
 
-        # ---------------------------------------------------------
         # BƯỚC 4.1: TỐI ƯU TUYẾN ĐƠN LẺ (SINGLE ROUTE)
-        # ---------------------------------------------------------
         logging.info("  [GĐ 4.1] Giải bài toán TSP trên từng tuyến đơn...")
         single_imp_total = 0
         for v, route in list(best_routes.items()):
@@ -679,9 +674,7 @@ class AdvancedCVRPOptimizer:
         if self._is_timed_out():
             return best_routes, best_cost
 
-        # ---------------------------------------------------------
         # BƯỚC 4.2: TỐI ƯU CẶP TUYẾN ĐƯỜNG (PAIRWISE)
-        # ---------------------------------------------------------
         logging.info("  [GĐ 4.2] Xét từng cặp tuyến để phân bổ lại khách hàng...")
         import random
 
@@ -739,17 +732,13 @@ class AdvancedCVRPOptimizer:
         logging.info("BẮT ĐẦU TUYẾN TRÌNH TỐI ƯU (PIPELINE)")
         logging.info("=========================================")
 
-        # ---------------------------------------------------------
         # CHẶNG 2: LOCAL SEARCH
-        # ---------------------------------------------------------
         routes, best_cost = self.run_phase_2_local_search(routes)
 
         if self._is_timed_out():
             return routes, best_cost
 
-        # ---------------------------------------------------------
         # CHẶNG 3: ALNS (PLACEHOLDER)
-        # ---------------------------------------------------------
         routes, best_cost = self.run_phase_3_alns(routes, max_iterations, target_cost)
         
         if target_cost > 0 and best_cost <= target_cost + 1e-5:
@@ -760,8 +749,6 @@ class AdvancedCVRPOptimizer:
         if self._is_timed_out():
             return routes, best_cost
         
-        # Hiện tại pass qua thẳng Chặng 4
-
         # CHẶNG 4: MAX-SAT (Tối ưu Toán học)
         routes, best_cost = self.run_phase_4_maxsat(routes)
 
