@@ -20,9 +20,9 @@ def get_file_path(filename):
 
 
 files = {
-    "PySAT": "benchmark_B_pysat.csv",
-    "Gurobi": "benchmark_B_gurobi.csv",
-    "CPLEX": "benchmark_B_cplex.csv",
+    "PySAT": "benchmark_E_pysat.csv",
+    "Gurobi": "benchmark_E_gurobi.csv",
+    "CPLEX": "benchmark_E_cplex.csv",
 }
 
 dfs = []
@@ -233,7 +233,7 @@ axes[1, 1].tick_params(axis="x", rotation=45)
 
 plt.tight_layout()
 # Lưu và hiển thị
-save_path = os.path.join("results", "scientific_comparison_reordered_highlight.png")
+save_path = os.path.join("results", "result_comparison_E.png")
 plt.savefig(save_path, dpi=300, bbox_inches="tight")
 print(f"\n[INFO] Đã lưu biểu đồ khoa học tại: {save_path}")
 

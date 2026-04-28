@@ -1,0 +1,30 @@
+2026-04-20 12:35:14,508 - ======================================================================
+2026-04-20 12:35:14,508 - FILE: E-n31-k7.vrp
+2026-04-20 12:35:14,508 - ======================================================================
+2026-04-20 12:35:14,509 - Dim=31 K=7 Cap=140
+2026-04-20 12:35:14,509 - --- Step 1: Clarke-Wright Heuristic ---
+2026-04-20 12:35:14,511 -   cost=843 time=0.00s
+2026-04-20 12:35:14,511 - --- Step 2, 3, 4: Advanced Optimization Pipeline ---
+2026-04-20 12:35:14,511 - =========================================
+2026-04-20 12:35:14,511 - BẮT ĐẦU TUYẾN TRÌNH TỐI ƯU (PIPELINE)
+2026-04-20 12:35:14,511 - =========================================
+2026-04-20 12:35:14,511 - === GIAI ĐOẠN 2: LOCAL SEARCH ĐA TOÁN TỬ | Bắt đầu: 843.00 ===
+2026-04-20 12:35:14,534 -   [LS Iter 1] Cải thiện cost: 843.00 -> 493.00
+2026-04-20 12:35:14,554 -   [LS Iter 2] Cải thiện cost: 493.00 -> 453.00
+2026-04-20 12:35:14,570 -   [LS Iter 3] Cải thiện cost: 453.00 -> 451.00
+2026-04-20 12:35:14,586 - === KẾT THÚC GIAI ĐOẠN 2 | Đạt cực trị tại: 451.00 ===
+2026-04-20 12:35:14,586 - === BẮT ĐẦU CHẶNG 3: ALNS + GLS | Vòng lặp: 300 | Cost: 451.00 ===
+2026-04-20 12:35:14,736 -   [ALNS Iter 6] Related Destroy phá vỡ giới hạn -> BEST MỚI: 431.00
+2026-04-20 12:35:14,767 -   [ALNS Iter 7] Related Destroy phá vỡ giới hạn -> BEST MỚI: 420.00
+2026-04-20 12:35:14,900 -   [ALNS Iter 14] Related Destroy phá vỡ giới hạn -> BEST MỚI: 419.00
+2026-04-20 12:35:15,491 -   [GLS Iter 41] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-04-20 12:35:16,881 -   [GLS Iter 101] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-04-20 12:35:17,642 -   [ALNS Iter 132] Related Destroy phá vỡ giới hạn -> BEST MỚI: 410.00
+2026-04-20 12:35:17,832 -   [GLS Iter 141] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-04-20 12:35:19,420 -   [GLS Iter 201] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-04-20 12:35:21,043 -   [GLS Iter 261] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-04-20 12:35:21,946 - === KẾT THÚC CHẶNG 3 | Cost xuất sắc nhất đạt được: 410.00 ===
+2026-04-20 12:35:21,946 - === BẮT ĐẦU CHẶNG 4: MAX-SAT CHÍNH XÁC | Cost: 410.00 ===
+2026-04-20 12:35:21,946 -   [GĐ 4.1] Giải bài toán TSP trên từng tuyến đơn...
+2026-04-20 12:35:22,062 -   [GĐ 4.2] Xét từng cặp tuyến để phân bổ lại khách hàng...
+2026-04-20 12:35:22,062 -   --- Pairwise Iter 1 (còn 1592s) ---
