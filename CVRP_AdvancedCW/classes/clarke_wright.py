@@ -3,6 +3,8 @@ from classes.route import Route
 from classes.utils import Utils
 
 import math
+import time
+import logging
 
 class ClarkeWright:
     ''' Class for the Clarke-Wright savings heuristic '''
@@ -342,82 +344,113 @@ class ClarkeWright:
         return bins
     
     def _backtrack_bin_pack(self, customers: list[int]) -> list[list[int]] | None:
-        ''' BFD with recursive swap repair for tight instances. '''
+        ''' BFD with recursive swap repair (Iterative Shallowing for Timeouts). '''
         
         K = self.vehicle_number
         cap = self.cvrp.capacity
         demands = self.cvrp.demands
         
-        bins: list[list[int]] = [[] for _ in range(K)]
-        bin_loads = [0] * K
-        unplaced = []
-        
-        # Phase 1: BFD placement
-        for c in customers:
-            d = demands[c]
-            best_b = -1
-            best_rem = float('inf')
-            for b in range(K):
-                rem = cap - bin_loads[b]
-                if rem >= d and rem < best_rem:
-                    best_rem = rem
-                    best_b = b
-            if best_b >= 0:
-                bins[best_b].append(c)
-                bin_loads[best_b] += d
-            else:
-                unplaced.append(c)
-        
-        if not unplaced:
-            return bins
-        
-        # Phase 2: Recursive swap repair
-        def try_place(customer: int, depth: int, forbidden: set) -> bool:
-            ''' Try to place customer, potentially swapping out others (up to depth). '''
-            d_c = demands[customer]
+        # Hàm nội bộ: Đóng gói BFD nguyên bản để lấy trạng thái gốc
+        def get_bfd_state():
+            bins_state: list[list[int]] = [[] for _ in range(K)]
+            loads_state = [0] * K
+            unplaced_state = []
             
-            # Direct placement
-            for b in range(K):
-                if bin_loads[b] + d_c <= cap:
-                    bins[b].append(customer)
-                    bin_loads[b] += d_c
-                    return True
+            for c in customers:
+                d = demands[c]
+                best_b = -1
+                best_rem = float('inf')
+                for b in range(K):
+                    rem = cap - loads_state[b]
+                    if rem >= d and rem < best_rem:
+                        best_rem = rem
+                        best_b = b
+                if best_b >= 0:
+                    bins_state[best_b].append(c)
+                    loads_state[best_b] += d
+                else:
+                    unplaced_state.append(c)
+            return bins_state, loads_state, unplaced_state
+
+        # Bước 1: Khởi tạo trạng thái BFD lần đầu
+        initial_bins, _, initial_unplaced = get_bfd_state()
+        
+        if not initial_unplaced:
+            return initial_bins
             
-            if depth <= 0:
-                return False
+        logging.info(f"    [CW-Phase4] BFD thất bại với {len(initial_unplaced)} khách hàng. Kích hoạt Backtracking (Giảm depth dần)...")
+        
+        # Bước 2: Iterative Shallowing (Thử từ sâu đến nông)
+        for current_depth in [3, 2, 1]:
+            # Reset lại toàn bộ thùng về trạng thái BFD sạch
+            bins, bin_loads, unplaced = get_bfd_state()
             
-            # Swap: remove an item x from a bin, place customer there, then place x
-            for b in range(K):
-                for i, x in enumerate(bins[b]):
-                    if x in forbidden:
-                        continue
-                    d_x = demands[x]
-                    # Would removing x and adding customer fit?
-                    if bin_loads[b] - d_x + d_c <= cap:
-                        # Try the swap
-                        bins[b].remove(x)
-                        bin_loads[b] -= d_x
+            TIME_LIMIT = 10  # Phân bổ 10 giây cho mỗi độ sâu
+            start_time = time.time()
+            logging.info(f"      -> Thử hoán đổi với depth={current_depth} (Limit: {TIME_LIMIT}s)...")
+            
+            def try_place(customer: int, depth: int, forbidden: set) -> bool:
+                ''' Try to place customer, potentially swapping out others. '''
+                
+                # CHỐT CHẶN BẢO VỆ CPU: Cắt rễ nhánh đệ quy nếu lố giờ
+                if time.time() - start_time > TIME_LIMIT:
+                    return False
+
+                d_c = demands[customer]
+                
+                # Direct placement
+                for b in range(K):
+                    if bin_loads[b] + d_c <= cap:
                         bins[b].append(customer)
                         bin_loads[b] += d_c
+                        return True
+                
+                if depth <= 0:
+                    return False
+                
+                # Swap: remove an item x from a bin, place customer there, then place x
+                for b in range(K):
+                    for i, x in enumerate(bins[b]):
+                        if x in forbidden:
+                            continue
+                        d_x = demands[x]
                         
-                        if try_place(x, depth - 1, forbidden | {customer}):
-                            return True
-                        
-                        # Undo
-                        bins[b].remove(customer)
-                        bin_loads[b] -= d_c
-                        bins[b].insert(i, x)
-                        bin_loads[b] += d_x
+                        # Would removing x and adding customer fit?
+                        if bin_loads[b] - d_x + d_c <= cap:
+                            # Try the swap
+                            bins[b].remove(x)
+                            bin_loads[b] -= d_x
+                            bins[b].append(customer)
+                            bin_loads[b] += d_c
+                            
+                            if try_place(x, depth - 1, forbidden | {customer}):
+                                return True
+                            
+                            # Undo
+                            bins[b].remove(customer)
+                            bin_loads[b] -= d_c
+                            bins[b].insert(i, x)  # Bảo toàn đúng index ban đầu
+                            bin_loads[b] += d_x
+                
+                return False
             
-            return False
-        
-        for c in list(unplaced):
-            if try_place(c, 3, {c}):
-                unplaced.remove(c)
-            else:
-                return None
-        
-        return bins if not unplaced else None
+            # Quét danh sách rớt mạng để nhét vào xe
+            success = True
+            for c in list(unplaced):
+                if try_place(c, current_depth, {c}):
+                    unplaced.remove(c)
+                else:
+                    success = False
+                    break  # Chỉ cần 1 khách hàng kẹt là hỏng cả độ sâu này, thoát vòng lặp nhỏ
+            
+            # Nếu nhét thành công toàn bộ không sót ai -> Nghiệm hợp lệ
+            if success and not unplaced:
+                logging.info(f"    [CW-Phase4] HOÀN HẢO! Backtracking thành công tại depth={current_depth}.")
+                return bins
+                
+        # Bước 3: Nếu đã thử đến depth=1 mà vẫn văng Limit hoặc vô nghiệm
+        logging.warning(f"    [CW-Phase4] TẤT CẢ depth đều thất bại hoặc timeout. Chuyển sang Fallback (Sweep).")
+        return None
                 
     @Utils.timer
     @staticmethod

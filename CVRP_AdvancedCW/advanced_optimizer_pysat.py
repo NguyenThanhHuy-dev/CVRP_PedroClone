@@ -293,6 +293,7 @@ class AdvancedCVRPOptimizer:
         capacity: int,
         n_vehicles: int,
         config: Dict[str, Any] = None,
+        script_start_time: float = None,
     ):
         self.distances = distances
         self.demands = demands
@@ -312,8 +313,9 @@ class AdvancedCVRPOptimizer:
         self.stat_single_timeouts = 0
         self.stat_pairwise_timeouts = 0
         self.stat_global_timeout = False
+        self._global_start = script_start_time
 
-        self._global_start: Optional[float] = None
+        # self._global_start: Optional[float] = None
 
     # ------------------------------------------------------------------
     def _remaining(self) -> Optional[float]:
@@ -506,19 +508,24 @@ class AdvancedCVRPOptimizer:
             # 1. Liên tuyến (Inter-route)
             best_routes, best_cost, imp = self.try_relocate(best_routes)
             global_improved = global_improved or imp
+            if self._is_timed_out(): break
 
             best_routes, best_cost, imp = self.try_exchange(best_routes)
             global_improved = global_improved or imp
+            if self._is_timed_out(): break
 
             best_routes, best_cost, imp = CrossExchange.run(best_routes, self.distances, self.demands, self.capacity)
             global_improved = global_improved or imp
+            if self._is_timed_out(): break
 
             # 2. Nội tuyến (Intra-route)
             best_routes, best_cost, imp = TwoOpt.run(best_routes, self.distances)
             global_improved = global_improved or imp
+            if self._is_timed_out(): break
 
             best_routes, best_cost, imp = OrOpt.run(best_routes, self.distances)
             global_improved = global_improved or imp
+            if self._is_timed_out(): break
 
             if global_improved and not silent:
                 logging.info(f"  [LS Iter {iteration}] Cải thiện cost: {start_iter_cost:.2f} -> {best_cost:.2f}")
@@ -603,7 +610,9 @@ class AdvancedCVRPOptimizer:
 
             # Bước 3.3: Dùng Local Search (Chặng 2) để dọn dẹp và trượt xuống hố cực trị mới
             ls_routes, ls_cost = self.run_phase_2_local_search(repaired_routes, silent=True)
-
+            if self._is_timed_out():
+                self.stat_global_timeout = True
+                break
             # Bước 3.4: Đánh giá nghiệm và Thích nghi
             if ls_cost < best_cost - 0.001:
                 best_cost = ls_cost
@@ -726,7 +735,8 @@ class AdvancedCVRPOptimizer:
         routes = {k: list(v) for k, v in initial_routes.items()}
         best_cost = self.compute_total_cost(routes)
 
-        self._global_start = time.time()
+        if self._global_start is None:
+            self._global_start = time.time()
 
         logging.info("=========================================")
         logging.info("BẮT ĐẦU TUYẾN TRÌNH TỐI ƯU (PIPELINE)")
@@ -747,6 +757,7 @@ class AdvancedCVRPOptimizer:
             return routes, best_cost
 
         if self._is_timed_out():
+            self.stat_global_timeout = True
             return routes, best_cost
         
         # CHẶNG 4: MAX-SAT (Tối ưu Toán học)
@@ -772,7 +783,7 @@ def solve_advanced(
     from classes.instance import Instance
     from classes.clarke_wright import ClarkeWright
     from classes.two_opt import TwoOpt
-
+    script_start_time = time.time()
     if config is None:
         config = {}
     # Bắt buộc global_timeout = 1200s
@@ -792,8 +803,21 @@ def solve_advanced(
     try:
         cw_time, cw_routes = ClarkeWright.run(cvrp, n_vehicles)
     except Exception:
-        logging.warning("CW thất bại → fallback K=999")
-        cw_time, cw_routes = ClarkeWright.run(cvrp, 999)
+        logging.error(f"❌ CW THẤT BẠI (UNSAT): Không thể đóng gói vào đúng K={n_vehicles} xe.")
+        logging.error("Lý do: Ràng buộc tải trọng quá khắt khe, Heuristic khởi tạo không tìm được tổ hợp khả thi.")
+        
+        # Trả về kết quả vô cực (inf) và cờ UNSAT cho Benchmark
+        stats = {
+            "solver_name": SOLVER_NAME if 'SOLVER_NAME' in locals() else "MIP-Solver",
+            "single_imp_count": 0,
+            "pairwise_imp_count": 0,
+            "single_timeouts": 0,
+            "pairwise_timeouts": 0,
+            "global_timeout": False,
+            "status": "UNSAT"
+        }
+        return {}, float('inf'), stats
+
     cw_cost = sum(r.cost for r in cw_routes.values())
     logging.info(f"  cost={cw_cost} time={cw_time:.2f}s")
 
@@ -809,6 +833,7 @@ def solve_advanced(
         capacity=cvrp.capacity,
         n_vehicles=n_vehicles,
         config=config,
+        script_start_time=script_start_time,
     )
     opt_routes, opt_cost = optimizer.optimize(
         routes_list, max_iterations=max_iterations,

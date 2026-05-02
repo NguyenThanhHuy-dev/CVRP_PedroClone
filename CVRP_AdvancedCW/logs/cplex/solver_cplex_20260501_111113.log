@@ -1,0 +1,44 @@
+2026-05-01 11:11:13,733 - ======================================================================
+2026-05-01 11:11:13,734 - CPLEX MIP SOLVER  |  FILE: X-n916-k207.vrp
+2026-05-01 11:11:13,734 - ======================================================================
+2026-05-01 11:11:15,040 - Thông tin dữ liệu: Dimension=916, K=207, Capacity=33
+2026-05-01 11:11:15,040 - --- Step 1: Clarke-Wright Heuristic ---
+2026-05-01 11:11:23,658 -     [CW-Phase4] BFD thất bại với 56 khách hàng. Kích hoạt Backtracking (Giảm depth dần)...
+2026-05-01 11:11:23,668 -       -> Thử hoán đổi với depth=3 (Limit: 1.5s)...
+2026-05-01 11:11:25,180 -       -> Thử hoán đổi với depth=2 (Limit: 1.5s)...
+2026-05-01 11:11:26,690 -       -> Thử hoán đổi với depth=1 (Limit: 1.5s)...
+2026-05-01 11:11:26,698 -     [CW-Phase4] TẤT CẢ depth đều thất bại hoặc timeout. Chuyển sang Fallback (Sweep).
+2026-05-01 11:11:33,405 -     [CW-Phase4] BFD thất bại với 56 khách hàng. Kích hoạt Backtracking (Giảm depth dần)...
+2026-05-01 11:11:33,416 -       -> Thử hoán đổi với depth=3 (Limit: 1.5s)...
+2026-05-01 11:11:34,927 -       -> Thử hoán đổi với depth=2 (Limit: 1.5s)...
+2026-05-01 11:11:36,437 -       -> Thử hoán đổi với depth=1 (Limit: 1.5s)...
+2026-05-01 11:11:36,445 -     [CW-Phase4] TẤT CẢ depth đều thất bại hoặc timeout. Chuyển sang Fallback (Sweep).
+2026-05-01 11:11:36,445 - ⚠️ Clarke-Wright kẹt với K giới hạn. Chạy fallback K=999...
+2026-05-01 11:11:37,201 -   Kết quả CW: Cost = 417916, Time = 0.678s
+2026-05-01 11:11:37,202 - --- Step 2: Advanced Optimization (CPLEX MIP) ---
+2026-05-01 11:11:37,202 - =========================================
+2026-05-01 11:11:37,202 - BẮT ĐẦU OPTIMIZE  (100% CPLEX MIP)
+2026-05-01 11:11:37,202 -  -> Max Single Size  : 20
+2026-05-01 11:11:37,202 -  -> Single Timeout   : 40.0s
+2026-05-01 11:11:37,202 -  -> Max Pairwise Size: 16
+2026-05-01 11:11:37,202 -  -> Pairwise Timeout : 45.0s
+2026-05-01 11:11:37,202 -  -> Global Timeout   : 1200.0s
+2026-05-01 11:11:37,203 -  -> Chi phí khởi điểm: 417916
+2026-05-01 11:11:37,203 - =========================================
+2026-05-01 11:11:37,203 - === BẮT ĐẦU CHẶNG 4: CPLEX MIP CHÍNH XÁC | Cost: 417916 ===
+2026-05-01 11:11:37,203 -   [GĐ 4.1] Giải bài toán TSP trên từng tuyến đơn...
+2026-05-01 11:11:39,713 -     -> Single CPLEX cải thiện: 1253. Cost mới: 416663
+2026-05-01 11:11:39,714 -   [GĐ 4.2] Xét từng cặp tuyến để phân bổ lại khách hàng...
+2026-05-01 11:11:39,714 -   --- Pairwise Iter 1 (còn 1197s) ---
+2026-05-01 11:11:39,923 -     [P4.2] Pair (201,255) giảm 14 -> BEST = 416649
+2026-05-01 11:11:39,940 -   --- Pairwise Iter 2 (còn 1197s) ---
+2026-05-01 11:11:40,124 -     [P4.2] Pair (49,154) giảm 85 -> BEST = 416564
+2026-05-01 11:11:40,141 -   --- Pairwise Iter 3 (còn 1197s) ---
+2026-05-01 11:11:42,211 -     [P4.2] Pair (160,227) giảm 13 -> BEST = 416551
+2026-05-01 11:11:42,234 -   --- Pairwise Iter 4 (còn 1195s) ---
+2026-05-01 11:11:42,584 -     [P4.2] Pair (240,259) giảm 6 -> BEST = 416545
+2026-05-01 11:11:42,606 -   --- Pairwise Iter 5 (còn 1195s) ---
+2026-05-01 11:11:43,331 -     [P4.2] Pair (76,136) giảm 16 -> BEST = 416529
+2026-05-01 11:11:43,352 -   --- Pairwise Iter 6 (còn 1194s) ---
+2026-05-01 11:11:44,105 -     [P4.2] Pair (179,265) giảm 4 -> BEST = 416525
+2026-05-01 11:11:44,124 -   --- Pairwise Iter 7 (còn 1193s) ---

@@ -41,7 +41,7 @@ logging.basicConfig(
 )
 
 GLOBAL_TIMEOUT_DEFAULT = 1200.0
-
+SOLVER_NAME = "CPLEX-MIP"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # OPTIMIZER CLASS
@@ -340,13 +340,28 @@ def solve_advanced(
 
     logging.info("--- Step 1: Clarke-Wright Heuristic ---")
     try:
+        # Thực hiện khởi tạo với đúng số lượng xe n_vehicles (Hard Constraint)
         cw_time, cw_routes = ClarkeWright.run(cvrp, n_vehicles)
-    except Exception:
-        logging.warning("⚠️ Clarke-Wright kẹt với K giới hạn. Chạy fallback K=999...")
-        cw_time, cw_routes = ClarkeWright.run(cvrp, 999)
-    cw_cost = sum(route.cost for route in cw_routes.values())
-    logging.info(f"  Kết quả CW: Cost = {cw_cost}, Time = {cw_time:.3f}s")
+    except Exception as e:
+        # TRƯỜNG HỢP UNSAT: Ngắt pipeline ngay lập tức nếu không tìm được nghiệm khả thi
+        logging.error(f"❌ CW THẤT BẠI (UNSAT): Không thể đóng gói vào đúng K={n_vehicles} xe.")
+        logging.error(f"Chi tiết: {str(e)}")
+        
+        # Trả về kết quả rỗng và trạng thái UNSAT để đồng bộ với Benchmark
+        stats = {
+            "solver_name": SOLVER_NAME if 'SOLVER_NAME' in locals() else "MIP-Solver",
+            "single_imp_count": 0,
+            "pairwise_imp_count": 0,
+            "single_timeouts": 0,
+            "pairwise_timeouts": 0,
+            "global_timeout": False,
+            "status": "UNSAT"
+        }
+        return {}, float('inf'), stats
 
+    # THỐNG NHẤT ĐỊNH DẠNG LOG: Sử dụng .3f để đồng bộ việc parse dữ liệu tự động
+    cw_cost = sum(r.cost for r in cw_routes.values())
+    logging.info(f"  Kết quả CW: Cost = {cw_cost}, Time = {cw_time:.3f}s")
     routes = {
         i: list(route.value) for i, (_, route) in enumerate(cw_routes.items())
     }
