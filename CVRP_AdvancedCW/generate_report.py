@@ -20,9 +20,9 @@ def get_file_path(filename):
 
 
 files = {
-    "PySAT": "benchmark_E_pysat.csv",
-    "Gurobi": "benchmark_E_gurobi.csv",
-    "CPLEX": "benchmark_E_cplex.csv",
+    "PySAT": "benchmark_X_pysat.csv",
+    "Gurobi": "benchmark_X_gurobi.csv",
+    "CPLEX": "benchmark_X_cplex.csv",
 }
 
 dfs = []
