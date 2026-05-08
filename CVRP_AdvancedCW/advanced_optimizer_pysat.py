@@ -208,7 +208,8 @@ class PairwiseRouteOptimizer:
                 for y in range(x+1, len(in_d)): self.wcnf.append([-in_d[x], -in_d[y]])
             for x in range(len(out_d)):
                 for y in range(x+1, len(out_d)): self.wcnf.append([-out_d[x], -out_d[y]])
-
+                
+        self.wcnf.append([self.asn[1]])
         # 4. VÒNG LẶP INCREMENTAL (CỐT LÕI SOTA)
         with RC2(self.wcnf, verbose=0) as solver:
             while True:

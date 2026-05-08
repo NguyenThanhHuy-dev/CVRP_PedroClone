@@ -125,7 +125,7 @@ class Solver:
             with open('input.txt', 'w+') as input_file:
                 input_file.write(self.encode())
             
-            system(f'./clasp input.txt > output.txt --time-limit=80')
+            system(f'./clasp input.txt > output.txt --time-limit=1200')
             
             with open('output.txt', 'r') as output_file:
                 self.decode(output_file.readlines())
