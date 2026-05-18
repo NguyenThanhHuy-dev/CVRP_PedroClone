@@ -1,0 +1,132 @@
+2026-05-16 08:10:56,562 - ======================================================================
+2026-05-16 08:10:56,562 - FILE: F-n45-k4.vrp
+2026-05-16 08:10:56,562 - ======================================================================
+2026-05-16 08:10:56,563 - Dim=45 K=4 Cap=2010
+2026-05-16 08:10:56,564 - --- Step 1: Clarke-Wright Heuristic ---
+2026-05-16 08:10:56,566 -   cost=956 time=0.00s
+2026-05-16 08:10:56,566 - --- Step 2, 3, 4: Advanced Optimization Pipeline ---
+2026-05-16 08:10:56,566 - =========================================
+2026-05-16 08:10:56,567 - BẮT ĐẦU TUYẾN TRÌNH TỐI ƯU (PIPELINE)
+2026-05-16 08:10:56,567 - =========================================
+2026-05-16 08:10:56,567 - === GIAI ĐOẠN 2: LOCAL SEARCH ĐA TOÁN TỬ | Bắt đầu: 956.00 ===
+2026-05-16 08:10:56,667 -   [LS Iter 1] Cải thiện cost: 956.00 -> 855.00
+2026-05-16 08:10:56,745 -   [LS Iter 2] Cải thiện cost: 855.00 -> 844.00
+2026-05-16 08:10:56,827 -   [LS Iter 3] Cải thiện cost: 844.00 -> 833.00
+2026-05-16 08:10:56,909 - === KẾT THÚC GIAI ĐOẠN 2 | Đạt cực trị tại: 833.00 ===
+2026-05-16 08:10:56,909 - === BẮT ĐẦU CHẶNG 3: ALNS + GLS | Vòng lặp: 1600 | Cost: 833.00 ===
+2026-05-16 08:10:57,534 -   [ALNS Iter 4] Worst Destroy phá vỡ giới hạn -> BEST MỚI: 804.00
+2026-05-16 08:10:57,703 -   [ALNS Iter 5] Random Destroy phá vỡ giới hạn -> BEST MỚI: 803.00
+2026-05-16 08:10:59,003 -   [ALNS Iter 20] Related Destroy phá vỡ giới hạn -> BEST MỚI: 801.00
+2026-05-16 08:11:00,992 -   [ALNS Iter 34] Random Destroy phá vỡ giới hạn -> BEST MỚI: 759.00
+2026-05-16 08:11:01,173 -   [ALNS Iter 35] Random Destroy phá vỡ giới hạn -> BEST MỚI: 758.00
+2026-05-16 08:11:01,842 -   [GLS Iter 41] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:11:10,186 -   [GLS Iter 101] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:11:10,693 -   [ALNS Iter 105] Related Destroy phá vỡ giới hạn -> BEST MỚI: 744.00
+2026-05-16 08:11:10,860 -   [ALNS Iter 106] Worst Destroy phá vỡ giới hạn -> BEST MỚI: 743.00
+2026-05-16 08:11:12,560 -   [ALNS Iter 117] Related Destroy phá vỡ giới hạn -> BEST MỚI: 733.00
+2026-05-16 08:11:12,708 -   [ALNS Iter 119] Related Destroy phá vỡ giới hạn -> BEST MỚI: 731.00
+2026-05-16 08:11:19,796 -   [GLS Iter 161] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:11:27,937 -   [ALNS Iter 208] Related Destroy phá vỡ giới hạn -> BEST MỚI: 730.00
+2026-05-16 08:11:35,035 -   [GLS Iter 241] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:11:46,289 -   [GLS Iter 301] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:11:58,341 -   [GLS Iter 361] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:12:10,381 -   [GLS Iter 421] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:12:16,330 -   [ALNS Iter 451] Worst Destroy phá vỡ giới hạn -> BEST MỚI: 727.00
+2026-05-16 08:12:17,567 -   [ALNS Iter 457] Random Destroy phá vỡ giới hạn -> BEST MỚI: 724.00
+2026-05-16 08:12:17,567 -   [ALNS] 🎉 Đã chạm mốc BKS (724.0). Ngắt vòng lặp ALNS sớm!
+2026-05-16 08:12:17,567 - === KẾT THÚC CHẶNG 3 | Cost xuất sắc nhất đạt được: 724.00 ===
+2026-05-16 08:12:17,567 - 🎉 ĐÃ ĐẠT NGHIỆM TỐI ƯU TOÀN CỤC (BKS = 724.0). DỪNG SỚM!
+2026-05-16 08:12:17,567 - ======================================================================
+2026-05-16 08:12:17,567 - CW Khởi tạo = 956 → Sau Pipeline = 724
+2026-05-16 08:12:17,567 - Cải thiện so CW: 232
+2026-05-16 08:12:17,567 - Tổng thời gian: 81.0s
+2026-05-16 08:12:17,567 - Verified cost: 724
+2026-05-16 08:12:17,568 - ======================================================================
+2026-05-16 08:12:17,568 - FILE: F-n72-k4.vrp
+2026-05-16 08:12:17,568 - ======================================================================
+2026-05-16 08:12:17,570 - Dim=72 K=4 Cap=30000
+2026-05-16 08:12:17,570 - --- Step 1: Clarke-Wright Heuristic ---
+2026-05-16 08:12:17,575 -   cost=353 time=0.00s
+2026-05-16 08:12:17,575 - --- Step 2, 3, 4: Advanced Optimization Pipeline ---
+2026-05-16 08:12:17,575 - =========================================
+2026-05-16 08:12:17,575 - BẮT ĐẦU TUYẾN TRÌNH TỐI ƯU (PIPELINE)
+2026-05-16 08:12:17,575 - =========================================
+2026-05-16 08:12:17,575 - === GIAI ĐOẠN 2: LOCAL SEARCH ĐA TOÁN TỬ | Bắt đầu: 353.00 ===
+2026-05-16 08:12:17,929 -   [LS Iter 1] Cải thiện cost: 353.00 -> 281.00
+2026-05-16 08:12:18,245 -   [LS Iter 2] Cải thiện cost: 281.00 -> 280.00
+2026-05-16 08:12:18,541 -   [LS Iter 3] Cải thiện cost: 280.00 -> 279.00
+2026-05-16 08:12:18,847 - === KẾT THÚC GIAI ĐOẠN 2 | Đạt cực trị tại: 279.00 ===
+2026-05-16 08:12:18,847 - === BẮT ĐẦU CHẶNG 3: ALNS + GLS | Vòng lặp: 1600 | Cost: 279.00 ===
+2026-05-16 08:12:28,144 -   [GLS Iter 21] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:12:41,167 -   [ALNS Iter 41] Random Destroy phá vỡ giới hạn -> BEST MỚI: 273.00
+2026-05-16 08:12:41,802 -   [ALNS Iter 42] Random Destroy phá vỡ giới hạn -> BEST MỚI: 272.00
+2026-05-16 08:12:42,759 -   [ALNS Iter 44] Random Destroy phá vỡ giới hạn -> BEST MỚI: 271.00
+2026-05-16 08:12:44,675 -   [ALNS Iter 48] Worst Destroy phá vỡ giới hạn -> BEST MỚI: 267.00
+2026-05-16 08:12:55,174 -   [ALNS Iter 66] Random Destroy phá vỡ giới hạn -> BEST MỚI: 264.00
+2026-05-16 08:12:59,730 -   [ALNS Iter 76] Related Destroy phá vỡ giới hạn -> BEST MỚI: 262.00
+2026-05-16 08:13:00,837 -   [ALNS Iter 77] Random Destroy phá vỡ giới hạn -> BEST MỚI: 261.00
+2026-05-16 08:13:06,788 -   [ALNS Iter 88] Related Destroy phá vỡ giới hạn -> BEST MỚI: 253.00
+2026-05-16 08:13:20,087 -   [ALNS Iter 116] Related Destroy phá vỡ giới hạn -> BEST MỚI: 244.00
+2026-05-16 08:13:25,676 -   [ALNS Iter 126] Random Destroy phá vỡ giới hạn -> BEST MỚI: 242.00
+2026-05-16 08:13:33,429 -   [GLS Iter 141] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:14:09,166 -   [GLS Iter 201] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:14:48,798 -   [GLS Iter 261] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:15:30,190 -   [GLS Iter 321] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:16:11,891 -   [GLS Iter 381] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:16:53,797 -   [GLS Iter 441] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:16:54,845 -   [ALNS Iter 442] Related Destroy phá vỡ giới hạn -> BEST MỚI: 241.00
+2026-05-16 08:17:19,614 -   [GLS Iter 481] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:17:55,899 -   [GLS Iter 541] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:18:30,672 -   [ALNS Iter 587] Related Destroy phá vỡ giới hạn -> BEST MỚI: 240.00
+2026-05-16 08:19:01,862 -   [GLS Iter 641] Cập nhật ma trận phạt do kẹt tải trọng liên tục.
+2026-05-16 08:19:41,149 -   [GLS Iter 701] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:20:28,794 -   [GLS Iter 761] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:20:42,415 -   [ALNS Iter 781] Random Destroy phá vỡ giới hạn -> BEST MỚI: 239.00
+2026-05-16 08:20:44,727 -   [ALNS Iter 784] Random Destroy phá vỡ giới hạn -> BEST MỚI: 238.00
+2026-05-16 08:20:56,509 -   [ALNS Iter 802] Related Destroy phá vỡ giới hạn -> BEST MỚI: 237.00
+2026-05-16 08:20:56,509 -   [ALNS] 🎉 Đã chạm mốc BKS (237.0). Ngắt vòng lặp ALNS sớm!
+2026-05-16 08:20:56,509 - === KẾT THÚC CHẶNG 3 | Cost xuất sắc nhất đạt được: 237.00 ===
+2026-05-16 08:20:56,509 - 🎉 ĐÃ ĐẠT NGHIỆM TỐI ƯU TOÀN CỤC (BKS = 237.0). DỪNG SỚM!
+2026-05-16 08:20:56,509 - ======================================================================
+2026-05-16 08:20:56,510 - CW Khởi tạo = 353 → Sau Pipeline = 237
+2026-05-16 08:20:56,510 - Cải thiện so CW: 116
+2026-05-16 08:20:56,510 - Tổng thời gian: 518.9s
+2026-05-16 08:20:56,510 - Verified cost: 237
+2026-05-16 08:20:56,510 - ======================================================================
+2026-05-16 08:20:56,510 - FILE: F-n135-k7.vrp
+2026-05-16 08:20:56,511 - ======================================================================
+2026-05-16 08:20:56,517 - Dim=135 K=7 Cap=2210
+2026-05-16 08:20:56,517 - --- Step 1: Clarke-Wright Heuristic ---
+2026-05-16 08:20:56,536 -   cost=1558 time=0.02s
+2026-05-16 08:20:56,536 - --- Step 2, 3, 4: Advanced Optimization Pipeline ---
+2026-05-16 08:20:56,537 - =========================================
+2026-05-16 08:20:56,537 - BẮT ĐẦU TUYẾN TRÌNH TỐI ƯU (PIPELINE)
+2026-05-16 08:20:56,537 - =========================================
+2026-05-16 08:20:56,537 - === GIAI ĐOẠN 2: LOCAL SEARCH ĐA TOÁN TỬ | Bắt đầu: 1558.00 ===
+2026-05-16 08:20:58,138 -   [LS Iter 1] Cải thiện cost: 1558.00 -> 1271.00
+2026-05-16 08:20:59,685 -   [LS Iter 2] Cải thiện cost: 1271.00 -> 1266.00
+2026-05-16 08:21:01,204 -   [LS Iter 3] Cải thiện cost: 1266.00 -> 1262.00
+2026-05-16 08:21:02,764 -   [LS Iter 4] Cải thiện cost: 1262.00 -> 1259.00
+2026-05-16 08:21:04,301 -   [LS Iter 5] Cải thiện cost: 1259.00 -> 1256.00
+2026-05-16 08:21:05,870 -   [LS Iter 6] Cải thiện cost: 1256.00 -> 1251.00
+2026-05-16 08:21:07,500 -   [LS Iter 7] Cải thiện cost: 1251.00 -> 1245.00
+2026-05-16 08:21:09,012 -   [LS Iter 8] Cải thiện cost: 1245.00 -> 1244.00
+2026-05-16 08:21:10,559 -   [LS Iter 9] Cải thiện cost: 1244.00 -> 1243.00
+2026-05-16 08:21:12,070 -   [LS Iter 10] Cải thiện cost: 1243.00 -> 1242.00
+2026-05-16 08:21:13,562 - === KẾT THÚC GIAI ĐOẠN 2 | Đạt cực trị tại: 1242.00 ===
+2026-05-16 08:21:13,562 - === BẮT ĐẦU CHẶNG 3: ALNS + GLS | Vòng lặp: 1600 | Cost: 1242.00 ===
+2026-05-16 08:21:58,704 -   [ALNS Iter 12] Worst Destroy phá vỡ giới hạn -> BEST MỚI: 1210.00
+2026-05-16 08:22:08,188 -   [ALNS Iter 13] Worst Destroy phá vỡ giới hạn -> BEST MỚI: 1185.00
+2026-05-16 08:22:14,400 -   [ALNS Iter 14] Worst Destroy phá vỡ giới hạn -> BEST MỚI: 1183.00
+2026-05-16 08:23:11,417 -   [GLS Iter 41] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:25:37,718 -   [GLS Iter 101] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:28:08,281 -   [GLS Iter 161] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:30:39,308 -   [GLS Iter 221] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:33:50,806 -   [GLS Iter 281] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:37:24,031 -   [GLS Iter 341] Cập nhật ma trận phạt để thay đổi hướng đi.
+2026-05-16 08:40:56,653 - === KẾT THÚC CHẶNG 3 | Cost xuất sắc nhất đạt được: 1183.00 ===
+2026-05-16 08:40:56,653 - ======================================================================
+2026-05-16 08:40:56,653 - CW Khởi tạo = 1558 → Sau Pipeline = 1183
+2026-05-16 08:40:56,653 - Cải thiện so CW: 375
+2026-05-16 08:40:56,653 - Tổng thời gian: 1200.1s
+2026-05-16 08:40:56,653 - Verified cost: 1183

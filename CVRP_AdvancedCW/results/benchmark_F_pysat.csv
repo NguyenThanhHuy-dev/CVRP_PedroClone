@@ -1,0 +1,4 @@
+Instance,N,K,BKS,Runs,Best_Cost,Best_Gap(%),Avg_Cost,Avg_Gap(%),Last_Cost,Last_Gap(%),Last_Time(s),Max_Single,Max_Pair,Max_Iter,Single_Timeout(s),Pair_Timeout(s),Global_Timeout(s),Single_Imp,Pair_Imp,S-Timeout,P-Timeout,G-Timeout,Method
+F-n45-k4,45,4,724,2,724,0.00,724.00,0.00,724,0.00,43.89,15,22,1600,40.0,113.0,1200.0,0,0,0,0,False,pysat
+F-n72-k4,72,4,237,2,237,0.00,237.00,0.00,237,0.00,514.09,15,22,1600,40.0,150.0,1200.0,0,0,0,0,False,pysat
+F-n135-k7,135,7,1162,2,1183,1.81,1189.00,2.32,1195,2.84,1200.08,15,22,1600,40.0,150.0,1200.0,0,0,0,0,True,pysat

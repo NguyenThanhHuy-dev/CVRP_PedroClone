@@ -93,19 +93,23 @@ class Instance:
                     raise Exception('Depot must be the first node')
         
     def load_distances(self):
-        ''' Load the distances for the CVRP instance '''
+        ''' Load the distances for the CVRP instance strictly according to TSPLIB/CVRPLIB standard '''
+        import math # Đảm bảo đã import math ở đầu file
           
         for i in range(self.dimension):
             for j in range(i + 1, self.dimension):
                 sdx = (self.node_coords[i][0] - self.node_coords[j][0]) ** 2
                 sdy = (self.node_coords[i][1] - self.node_coords[j][1]) ** 2
                 
-                distance = np.sqrt(sdx + sdy)
+                distance = math.sqrt(sdx + sdy)
                 
                 if self.edge_weight_type == 'ATT':
-                    distance /= 10
-                    
-                self.distances[i, j] = self.distances[j, i] = round(distance)
+                    # Chuẩn pseudo-Euclidean (ATT)
+                    distance /= 10.0
+                    self.distances[i, j] = self.distances[j, i] = math.ceil(distance)
+                else:
+                    # Chuẩn EUC_2D: Làm tròn Nearest Integer (nint) theo công thức C/C++
+                    self.distances[i, j] = self.distances[j, i] = math.floor(distance + 0.5)
     
     def load(self):
         ''' Load an instance from the file '''

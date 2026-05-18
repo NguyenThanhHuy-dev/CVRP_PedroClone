@@ -44,12 +44,12 @@ RESULT_FILE  = os.path.join(RESULTS_DIR, f"benchmark_P_{METHOD}.csv")
 if not os.path.exists(RESULTS_DIR):
     os.makedirs(RESULTS_DIR)
 
-# SINGLE SOURCE OF TRUTH (CẤU HÌNH TRUNG TÂM)
+# Biến ALNS_ITERATIONS chỉ dùng cho PySAT, truyền bừa cho Gurobi/CPLEX (chúng tự bỏ qua)
 ALNS_ITERATIONS = 1600
 
 BASE_CONFIGS = {
-    "gurobi": {"single_timeout": 40.0},
-    "cplex":  {"single_timeout": 40.0},
+    "gurobi": {"single_timeout": 60.0},
+    "cplex":  {"single_timeout": 60.0},
     "pysat":  {"single_timeout": 40.0},
 }
 
@@ -58,21 +58,27 @@ def build_dynamic_config(n: int, k: int) -> dict:
     avg  = n / k if k > 0 else float(n)
 
     if METHOD in ("gurobi", "cplex"):
-        max_single   = max(20, min(35, int(avg * 2.0)))
-        max_pairwise = max(16, min(28, int(avg * 3.0)))
+        # Giữ nguyên size lớn để bộ P (quy mô nhỏ) không bị vét cạn và thoát quá nhanh
+        max_single   = max(20, min(40, int(avg * 3.5)))
+        max_pairwise = max(20, min(45, int(avg * 5.0)))
+        
+        # ĐƯA THỜI GIAN VỀ CHUẨN CỦA BỘ X
         pair_timeout = float(math.ceil(min(120.0, max(30.0, avg * 9.0))))
+        global_timeout = 1200.0  # Chuẩn hóa 1200s
     else:  # pysat
         max_single   = 15
         max_pairwise = 22
-        pair_timeout = float(math.ceil(min(300.0, max(120.0, avg * 15.0))))
+        # ĐƯA THỜI GIAN VỀ CHUẨN CỦA BỘ X
+        pair_timeout = float(math.ceil(min(150.0, max(60.0, avg * 10.0))))
+        global_timeout = 1200.0  # Chuẩn hóa 1200s
+
     return {
         "max_single_size":   max_single,
         "single_timeout":    base["single_timeout"],
         "max_pairwise_size": max_pairwise,
         "pairwise_timeout":  pair_timeout,
-        "global_timeout":    1600.0,
+        "global_timeout":    global_timeout,
     }
-
 # HELPERS
 def get_bks_from_sol(sol_filepath: str) -> int:
     if not os.path.exists(sol_filepath): return 0
@@ -119,7 +125,6 @@ def run_p_benchmark():
 
     print("\n" + "=" * 70)
     print(f"BENCHMARK P-SET  |  METHOD: {METHOD.upper()}  |  {len(p_files)} instances")
-    print(f"ALNS Iterations  : {ALNS_ITERATIONS}")
     print(f"Single Timeout   : {BASE_CONFIGS[METHOD]['single_timeout']}s")
     print(f"KẾT QUẢ LƯU VÀO  : {RESULT_FILE}")
     print("=" * 70)
@@ -149,8 +154,12 @@ def run_p_benchmark():
         try:
             suppressed = suppress_logging_to_console()
 
+            # TRUYỀN TARGET_COST ĐỂ KÍCH HOẠT EARLY STOPPING NẾU CHẠM BKS SỚM
             opt_routes, opt_cost, stats = solve_advanced(
-                filepath, config=cfg, max_iterations=ALNS_ITERATIONS, target_cost=float(bks)
+                filepath, 
+                config=cfg, 
+                max_iterations=ALNS_ITERATIONS, # (Bị bỏ qua bởi Gurobi/Cplex, giữ nguyên cho PySat)
+                target_cost=float(bks) 
             )
 
             restore_logging_to_console(suppressed)

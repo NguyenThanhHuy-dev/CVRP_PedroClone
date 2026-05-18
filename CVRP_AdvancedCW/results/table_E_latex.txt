@@ -1,0 +1,30 @@
+% Cần thêm các package: \usepackage{booktabs}, \usepackage{multirow}, \usepackage{graphicx}
+
+\begin{table}[htbp]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{l c | r r r | r r r | r r r | r r r}
+\toprule
+\multirow{2}{*}{\textbf{Instance}} & \multirow{2}{*}{\textbf{BKS}} & \multicolumn{3}{c|}{\textbf{Ferreira et al.}} & \multicolumn{3}{c|}{\textbf{CPLEX}} & \multicolumn{3}{c|}{\textbf{Gurobi}} & \multicolumn{3}{c}{\textbf{PySAT (Đề xuất)}} \\
+\cmidrule(lr){3-5} \cmidrule(lr){6-8} \cmidrule(lr){9-11} \cmidrule(lr){12-14}
+ & & Cost & Gap(\%) & Time(s) & Cost & Gap(\%) & Time(s) & Cost & Gap(\%) & Time(s) & Cost & Gap(\%) & Time(s) \\
+\midrule
+E-n101-k14 & 1067.00 & 1967.00 & 84.35 & 1201.91 & 1211.00 & 13.50 & 1598.08 & 1215.00 & 13.87 & 1598.06 & 1102.00 & 3.28 & 1598.04 \\
+E-n101-k8 & 815.00 & 1292.00 & 58.53 & 1200.54 & 929.00 & 13.99 & 1598.12 & 931.00 & 14.23 & 1598.08 & 835.00 & 2.45 & 221.56 \\
+E-n13-k4 & 247.00 & 319.00 & 29.15 & 0.13 & 247.00 & 0.00 & 1.46 & 247.00 & 0.00 & 1.95 & 247.00 & \textbf{0.00} & 0.04 \\
+E-n22-k4 & 375.00 & \multicolumn{3}{c|}{CW\_UNSAT} & 375.00 & 0.00 & 12.47 & 375.00 & 0.00 & 10.78 & 375.00 & \textbf{0.00} & 0.31 \\
+E-n23-k3 & 569.00 & 635.00 & 11.60 & 1198.06 & 569.00 & 0.00 & 5.56 & 569.00 & 0.00 & 3.09 & 569.00 & \textbf{0.00} & 0.28 \\
+E-n30-k3 & 534.00 & 730.00 & 36.70 & 1198.08 & 538.00 & 0.75 & 518.51 & 537.00 & 0.56 & 547.22 & 537.00 & 0.56 & 87.00 \\
+E-n31-k7 & 379.00 & 586.00 & 54.62 & 2.81 & 391.00 & 3.17 & 8.11 & 391.00 & 3.17 & 9.93 & 383.00 & 1.06 & 462.62 \\
+E-n33-k4 & 835.00 & \multicolumn{3}{c|}{CW\_UNSAT} & 838.00 & 0.36 & 678.59 & 836.00 & 0.12 & 580.32 & 838.00 & 0.36 & 197.39 \\
+E-n51-k5 & 521.00 & \multicolumn{3}{c|}{CW\_UNSAT} & 533.00 & 2.30 & 1058.14 & 548.00 & 5.18 & 1063.79 & 521.00 & \textbf{0.00} & 9.14 \\
+E-n76-k10 & 830.00 & \multicolumn{3}{c|}{CW\_UNSAT} & 854.00 & 2.89 & 1598.06 & 843.00 & 1.57 & 1598.03 & 866.00 & 4.34 & 1598.03 \\
+E-n76-k14 & 1021.00 & \multicolumn{3}{c|}{CW\_UNSAT} & 1057.00 & 3.53 & 437.09 & 1047.00 & 2.55 & 378.16 & 1060.00 & 3.82 & 1598.03 \\
+E-n76-k7 & 682.00 & 1150.00 & 68.62 & 1199.20 & 756.00 & 10.85 & 1598.07 & 729.00 & 6.89 & 1598.06 & 696.00 & 2.05 & 170.02 \\
+E-n76-k8 & 735.00 & \multicolumn{3}{c|}{CW\_UNSAT} & 817.00 & 11.16 & 1598.07 & 754.00 & 2.59 & 1598.06 & 746.00 & 1.50 & 125.79 \\
+\bottomrule
+\end{tabular}
+}
+\caption{So sánh chất lượng nghiệm và thời gian giải trên bộ dữ liệu E}
+\label{tab:benchmark_E}
+\end{table}

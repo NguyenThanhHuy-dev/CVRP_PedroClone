@@ -796,7 +796,7 @@ def solve_advanced(
 
     cvrp = Instance(filepath)
     cvrp.load()
-    cvrp.distances = np.floor(cvrp.distances + 0.5).astype(int)
+    # cvrp.distances = np.floor(cvrp.distances + 0.5).astype(int)
     n_vehicles = int(re.search(r"-k(\d+)", filepath).group(1))
     logging.info(f"Dim={cvrp.dimension} K={n_vehicles} Cap={cvrp.capacity}")
 

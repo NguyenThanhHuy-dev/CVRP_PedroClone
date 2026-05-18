@@ -118,21 +118,20 @@ class Solver:
             
             self.edges.append(edge)
     
-    def solve(self):
+    def solve(self, timeout: int = 1200):
         ''' Solve the model '''
-        
         try:
             with open('input.txt', 'w+') as input_file:
                 input_file.write(self.encode())
             
-            system(f'./clasp input.txt > output.txt --time-limit=1200')
+            # [PATCH]: Chèn biến timeout động vào câu lệnh shell
+            system(f'./clasp input.txt > output.txt --time-limit={timeout}')
             
             with open('output.txt', 'r') as output_file:
                 self.decode(output_file.readlines())
         
             remove('input.txt')
             remove('output.txt')
-        
         except:    
             raise Exception('Cannot solve the model')
         
@@ -322,12 +321,11 @@ class Solver:
         
     @Utils.timer
     @staticmethod
-    def run(cvrp: Instance, matrices: list[np.ndarray], use_lima: bool = False) -> tuple[float, float, list[str]]:
+    def run(cvrp: Instance, matrices: list[np.ndarray], use_lima: bool = False, timeout: int = 1200) -> tuple[float, float, list[str]]:
         ''' Run the solver '''
-        
         solver = Solver(cvrp, matrices, use_lima)
-        
         solver.load_model()
-        solver.solve()
+        # [PATCH]: Truyền timeout vào hàm solve
+        solver.solve(timeout=timeout)
 
         return solver.optimum, solver.edges

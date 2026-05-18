@@ -1,0 +1,153 @@
+[INFO] Đang nạp solver: GUROBI...
+
+======================================================================
+BENCHMARK P-SET  |  METHOD: GUROBI  |  24 instances
+Single Timeout   : 60.0s
+KẾT QUẢ LƯU VÀO  : results/benchmark_P_gurobi.csv
+======================================================================
+
+[01/24] P-n16-k8 (N=16, K=8, BKS=450) ← đã có 2 lần chạy, best=450
+  [Config] single=20 pair=20 s_to=60s p_to=30s
+  -> Cost: 450 | Gap: +0.00% | Time: 2.0s
+  -> S-Imp: 0 | P-Imp: 4
+  -> Runs=3 | Best=450 (0.00%) | Avg=450.00 (0.00%)
+
+[02/24] P-n19-k2 (N=19, K=2, BKS=212) ← đã có 2 lần chạy, best=212
+  [Config] single=33 pair=45 s_to=60s p_to=86s
+  -> Cost: 212 | Gap: +0.00% | Time: 41.9s
+  -> S-Imp: 2 | P-Imp: 1
+  -> Runs=3 | Best=212 (0.00%) | Avg=212.00 (0.00%)
+
+[03/24] P-n20-k2 (N=20, K=2, BKS=216) ← đã có 2 lần chạy, best=216
+  [Config] single=35 pair=45 s_to=60s p_to=90s
+  -> Cost: 216 | Gap: +0.00% | Time: 28.9s
+  -> S-Imp: 2 | P-Imp: 1
+  -> Runs=3 | Best=216 (0.00%) | Avg=216.00 (0.00%)
+
+[04/24] P-n21-k2 (N=21, K=2, BKS=211) ← đã có 2 lần chạy, best=211
+  [Config] single=36 pair=45 s_to=60s p_to=95s
+  -> Cost: 211 | Gap: +0.00% | Time: 28.4s
+  -> S-Imp: 2 | P-Imp: 1
+  -> Runs=3 | Best=211 (0.00%) | Avg=211.00 (0.00%)
+
+[05/24] P-n22-k8 (N=22, K=8, BKS=603) ← đã có 2 lần chạy, best=676
+  [Config] single=20 pair=20 s_to=60s p_to=30s
+  -> Cost: 676 | Gap: +12.11% | Time: 2.6s
+  -> S-Imp: 2 | P-Imp: 5
+  -> Runs=3 | Best=676 (12.11%) | Avg=676.00 (12.11%)
+
+[06/24] P-n22-k2 (N=22, K=2, BKS=216) ← đã có 2 lần chạy, best=216
+  [Config] single=38 pair=45 s_to=60s p_to=99s
+  -> Cost: 216 | Gap: +0.00% | Time: 30.0s
+  -> S-Imp: 2 | P-Imp: 1
+  -> Runs=3 | Best=216 (0.00%) | Avg=216.00 (0.00%)
+
+[07/24] P-n23-k8 (N=23, K=8, BKS=529) ← đã có 2 lần chạy, best=529
+  [Config] single=20 pair=20 s_to=60s p_to=30s
+  -> Cost: 529 | Gap: +0.00% | Time: 1.5s
+  -> S-Imp: 1 | P-Imp: 1
+  -> Runs=3 | Best=529 (0.00%) | Avg=529.00 (0.00%)
+
+[08/24] P-n40-k5 (N=40, K=5, BKS=458) ← đã có 2 lần chạy, best=465
+  [Config] single=28 pair=40 s_to=60s p_to=72s
+  -> Cost: 465 | Gap: +1.53% | Time: 202.3s
+  -> S-Imp: 5 | P-Imp: 9
+  -> Runs=3 | Best=465 (1.53%) | Avg=465.00 (1.53%)
+
+[09/24] P-n45-k5 (N=45, K=5, BKS=510) ← đã có 2 lần chạy, best=522
+  [Config] single=31 pair=45 s_to=60s p_to=81s
+  -> Cost: 522 | Gap: +2.35% | Time: 723.1s
+  -> S-Imp: 5 | P-Imp: 8
+  -> Runs=3 | Best=522 (2.35%) | Avg=522.00 (2.35%)
+
+[10/24] P-n50-k10 (N=50, K=10, BKS=696) ← đã có 2 lần chạy, best=727
+  [Config] single=20 pair=25 s_to=60s p_to=45s
+  -> Cost: 727 | Gap: +4.45% | Time: 61.5s
+  -> S-Imp: 5 | P-Imp: 14
+  -> Runs=3 | Best=727 (4.45%) | Avg=727.00 (4.45%)
+
+[11/24] P-n50-k7 (N=50, K=7, BKS=554) ← đã có 2 lần chạy, best=566
+  [Config] single=25 pair=35 s_to=60s p_to=65s
+  -> Cost: 566 | Gap: +2.17% | Time: 440.9s
+  -> S-Imp: 5 | P-Imp: 14
+  -> Runs=3 | Best=566 (2.17%) | Avg=566.00 (2.17%)
+
+[12/24] P-n50-k8 (N=50, K=8, BKS=631) ← đã có 2 lần chạy, best=662
+  [Config] single=21 pair=31 s_to=60s p_to=57s
+  -> Cost: 662 | Gap: +4.91% | Time: 52.2s
+  -> S-Imp: 6 | P-Imp: 15
+  -> Runs=3 | Best=662 (4.91%) | Avg=662.00 (4.91%)
+
+[13/24] P-n51-k10 (N=51, K=10, BKS=741) ← đã có 2 lần chạy, best=782
+  [Config] single=20 pair=25 s_to=60s p_to=46s
+  -> Cost: 782 | Gap: +5.53% | Time: 58.8s
+  -> S-Imp: 6 | P-Imp: 15
+  -> Runs=3 | Best=782 (5.53%) | Avg=782.00 (5.53%)
+
+[14/24] P-n55-k15 (N=55, K=15, BKS=989) ← đã có 2 lần chạy, best=1073
+  [Config] single=20 pair=20 s_to=60s p_to=33s
+  -> Cost: 1073 | Gap: +8.49% | Time: 104.5s
+  -> S-Imp: 13 | P-Imp: 39
+  -> Runs=3 | Best=1073 (8.49%) | Avg=1073.00 (8.49%)
+
+[15/24] P-n55-k8 (N=55, K=8, BKS=588) ← đã có 2 lần chạy, best=611
+  [Config] single=24 pair=34 s_to=60s p_to=62s
+  -> Cost: 611 | Gap: +3.91% | Time: 286.5s
+  -> S-Imp: 6 | P-Imp: 8
+  -> Runs=3 | Best=611 (3.91%) | Avg=611.00 (3.91%)
+
+[16/24] P-n55-k10 (N=55, K=10, BKS=694) ← đã có 1 lần chạy, best=704
+  [Config] single=20 pair=27 s_to=60s p_to=50s
+  -> Cost: 704 | Gap: +1.44% | Time: 295.7s
+  -> S-Imp: 8 | P-Imp: 17
+  -> Runs=2 | Best=704 (1.44%) | Avg=704.00 (1.44%)
+
+[17/24] P-n55-k7 (N=55, K=7, BKS=568) ← đã có 1 lần chạy, best=579
+  [Config] single=27 pair=39 s_to=60s p_to=71s
+  -> Cost: 579 | Gap: +1.94% | Time: 426.1s
+  -> S-Imp: 7 | P-Imp: 7
+  -> Runs=2 | Best=579 (1.94%) | Avg=579.00 (1.94%)
+
+[18/24] P-n60-k15 (N=60, K=15, BKS=968) ← đã có 1 lần chạy, best=1008
+  [Config] single=20 pair=20 s_to=60s p_to=36s
+  -> Cost: 1008 | Gap: +4.13% | Time: 79.7s
+  -> S-Imp: 6 | P-Imp: 23
+  -> Runs=2 | Best=1008 (4.13%) | Avg=1008.00 (4.13%)
+
+[19/24] P-n60-k10 (N=60, K=10, BKS=744) ← đã có 1 lần chạy, best=772
+  [Config] single=21 pair=30 s_to=60s p_to=54s
+  -> Cost: 772 | Gap: +3.76% | Time: 216.6s
+  -> S-Imp: 7 | P-Imp: 14
+  -> Runs=2 | Best=772 (3.76%) | Avg=772.00 (3.76%)
+
+[20/24] P-n65-k10 (N=65, K=10, BKS=792) ← đã có 1 lần chạy, best=817
+  [Config] single=22 pair=32 s_to=60s p_to=59s
+  -> Cost: 817 | Gap: +3.16% | Time: 281.7s
+  -> S-Imp: 9 | P-Imp: 15
+  -> Runs=2 | Best=817 (3.16%) | Avg=817.00 (3.16%)
+
+[21/24] P-n70-k10 (N=70, K=10, BKS=827) ← đã có 1 lần chạy, best=871
+  [Config] single=24 pair=35 s_to=60s p_to=63s
+  -> Cost: 871 | Gap: +5.32% | Time: 767.1s
+  -> S-Imp: 7 | P-Imp: 22
+  -> Runs=2 | Best=871 (5.32%) | Avg=871.00 (5.32%)
+
+[22/24] P-n76-k5 (N=76, K=5, BKS=627) ← đã có 1 lần chạy, best=749
+  [Config] single=40 pair=45 s_to=60s p_to=120s
+  -> Cost: 706 | Gap: +12.60% | Time: 1198.1s
+  -> S-Imp: 6 | P-Imp: 6
+  -> Runs=2 | Best=706 (12.60%) | Avg=727.50 (16.03%)
+
+[23/24] P-n76-k4 (N=76, K=4, BKS=593) ← đã có 1 lần chạy, best=637
+  [Config] single=40 pair=45 s_to=60s p_to=120s
+  -> Cost: 657 | Gap: +10.79% | Time: 1198.1s
+  -> S-Imp: 6 | P-Imp: 6
+  -> Runs=2 | Best=637 (7.42%) | Avg=647.00 (9.11%)
+
+[24/24] P-n101-k4 (N=101, K=4, BKS=681) ← đã có 1 lần chạy, best=746
+  [Config] single=40 pair=45 s_to=60s p_to=120s
+  -> Cost: 835 | Gap: +22.61% | Time: 13.5s
+  -> S-Imp: 4 | P-Imp: 0
+  -> Runs=2 | Best=746 (9.54%) | Avg=790.50 (16.08%)
+
+HOÀN THÀNH.

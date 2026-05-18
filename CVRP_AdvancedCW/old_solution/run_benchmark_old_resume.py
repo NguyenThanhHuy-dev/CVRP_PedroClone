@@ -185,21 +185,40 @@ def run_benchmark(target_set: str, neighbor_num: int):
             
             _, matrices = KNeighbors.run(cvrp, neighbor_num, routes)
 
-            solver_time, solver_cost, _ = Solver.run(cvrp, matrices)
+            # [PATCH 1]: Tính toán thời gian trừ hao trước khi gọi bộ giải chính xác
+            elapsed_before_solver = time.time() - start_total
+            # Cắt bớt 1 giây buffer để an toàn cho độ trễ hệ điều hành
+            remaining_time = int(GLOBAL_TIMEOUT - elapsed_before_solver - 1) 
+            
+            if remaining_time <= 0:
+                solver_cost = float('inf')
+            else:
+                # Truyền quỹ thời gian thực tế còn lại cho clasp
+                solver_time, solver_cost, _ = Solver.run(cvrp, matrices, use_lima=False, timeout=remaining_time)
             
             total_time = time.time() - start_total
-            is_timeout = (total_time >= GLOBAL_TIMEOUT)
+            # Ép cờ timeout nếu hệ thống chạy sát hoặc vượt ngưỡng (trừ hao 2 giây)
+            is_timeout = (total_time >= GLOBAL_TIMEOUT - 2.0)
 
-            if solver_cost < float('inf'):
+            # [PATCH 2]: Logic State Consistency cho Gap và Status 
+            gap = "" # Bỏ giá trị mặc định 0.0
+
+            if solver_cost == 0:
+                # Đồ thị đứt gãy do K-Neighbors (Infeasible ngầm)
+                status = "INFEASIBLE"
+                gap = -100.0
+            elif solver_cost < float('inf'):
+                # Tìm được nghiệm
                 status = "TIMEOUT_WITH_SOL" if is_timeout else "SUCCESS"
+                if bks > 0:
+                    gap = ((solver_cost - bks) / bks) * 100
             else:
+                # Hoàn toàn không tìm được nghiệm
                 status = "TIMEOUT_NO_SOL" if is_timeout else "FAILED"
 
-            if bks > 0 and solver_cost < float('inf'):
-                gap = ((solver_cost - bks) / bks) * 100
-
-            logging.info(f"  [Kết quả] Cost = {solver_cost:.2f} | Gap = {gap:.2f}% | Time: {total_time:.1f}s | Trạng thái: {status}")
-
+            gap_str = f"{gap:.2f}%" if isinstance(gap, float) else "N/A"
+            logging.info(f"  [Kết quả] Cost = {solver_cost:.2f} | Gap = {gap_str} | Time: {total_time:.1f}s | Trạng thái: {status}")
+            
         except Exception as e:
             total_time = time.time() - start_total
             is_timeout = (total_time >= GLOBAL_TIMEOUT)

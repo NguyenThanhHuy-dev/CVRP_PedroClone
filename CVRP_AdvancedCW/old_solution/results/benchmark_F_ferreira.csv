@@ -1,4 +1,4 @@
 Instance,N,K,BKS,Neighbor_Num,CW_Cost,Solver_Cost,Gap_%,Total_Time_s,Status,Global_Timeout,Runs
-F-n135-k7,135,7,1162.0,9,,,,0.04,CW_UNSAT,False,1
-F-n45-k4,45,4,724.0,9,1292,1167,61.19,1200.23,TIMEOUT_WITH_SOL,True,1
-F-n72-k4,72,4,237.0,9,,,,0.01,CW_UNSAT,False,1
+F-n135-k7,135,7,1162.0,9,,,,0.04,CW_UNSAT,False,2
+F-n45-k4,45,4,724.0,9,1292,1167,61.19,1200.23,TIMEOUT_WITH_SOL,True,2
+F-n72-k4,72,4,237.0,9,,,,0.01,CW_UNSAT,False,2

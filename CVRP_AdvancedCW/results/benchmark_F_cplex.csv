@@ -1,0 +1,4 @@
+Instance,N,K,BKS,Runs,Best_Cost,Best_Gap(%),Avg_Cost,Avg_Gap(%),Last_Cost,Last_Gap(%),Last_Time(s),Max_Single,Max_Pair,Max_Iter,Single_Timeout(s),Pair_Timeout(s),Global_Timeout(s),Single_Imp,Pair_Imp,S-Timeout,P-Timeout,G-Timeout,Method
+F-n45-k4,45,4,724,2,728,0.55,728.00,0.55,728,0.55,1198.16,22,28,1600,40.0,102.0,1200.0,5,4,0,2,False,cplex
+F-n72-k4,72,4,237,2,283,19.41,283.50,19.62,284,19.83,203.75,35,28,1600,40.0,120.0,1200.0,3,0,0,0,False,cplex
+F-n135-k7,135,7,1162,2,1269,9.21,1269.00,9.21,1269,9.21,744.12,35,28,1600,40.0,120.0,1200.0,7,0,0,0,False,cplex
