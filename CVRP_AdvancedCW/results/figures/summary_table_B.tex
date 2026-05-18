@@ -1,0 +1,17 @@
+\begin{table}[H]
+\centering
+\caption{Thống kê tổng hợp trên bộ dữ liệu B}
+\label{tab:summary_b}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Phương pháp} & \textbf{Nghiệm hợp lệ} & \textbf{Nghiệm tối ưu} & \textbf{Thất bại/OOM} & \textbf{Gap TB (\%)} & \textbf{Time TB (s)} \\
+\midrule
+Ferreira & 15 & 0 & 8 & 54.72 & 873.19 \\
+CPLEX & 23 & 4 & 0 & 5.98 & 1116.94 \\
+Gurobi & 23 & 4 & 0 & 5.75 & 1104.54 \\
+PySAT & 23 & 11 & 0 & 0.64 & 813.08 \\
+\bottomrule
+\end{tabular}
+\vspace{0.2cm}
+\footnotesize{OOM: vượt quá bộ nhớ; CW\_UNSAT: Clarke-Wright không sinh được nghiệm khả thi; INFEASIBLE: không tìm được nghiệm thoả mãn ràng buộc.}
+\end{table}

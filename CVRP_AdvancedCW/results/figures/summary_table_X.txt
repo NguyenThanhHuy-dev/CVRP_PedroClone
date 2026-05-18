@@ -1,0 +1,15 @@
+\begin{table}[H]
+\centering
+\caption{Thống kê tổng hợp kết quả trên bộ dữ liệu X}
+\label{tab:summary_X}
+\begin{tabular}{l c c c c c}
+\toprule
+\textbf{Phương pháp} & \textbf{Nghiệm hợp lệ} & \textbf{Tối ưu toàn cục} & \textbf{Thất bại / OOM} & \textbf{Gap TB (\%)} & \textbf{Thời gian TB (s)} \\
+\midrule
+Ferreira & 9 & 15 & 90 & -30.84 & 298.50 \\
+CPLEX & 98 & 0 & 1 & 46.77 & 1176.72 \\
+Gurobi & 88 & 0 & 11 & 42.66 & 946.64 \\
+PySAT & 98 & 0 & 1 & 9.75 & 1241.67 \\
+\bottomrule
+\end{tabular}
+\end{table}
