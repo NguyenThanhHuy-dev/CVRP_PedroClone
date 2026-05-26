@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: UTF-8 -*-
-"""
-Gurobi-based Optimizers cho CVRP
-================================
-Bao gồm Tối ưu Đơn tuyến (TSP) và Tối ưu Cặp tuyến (2-Vehicle VRP).
-"""
-
 import numpy as np
 from typing import List, Tuple
 import gurobipy as gp

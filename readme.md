@@ -1,4 +1,4 @@
-# CVRP Hybrid Solver: Metaheuristic + MaxSAT 🚚💡
+# CVRP Hybrid Solver: Metaheuristic + MaxSAT 
 
 > **Khóa luận Tốt nghiệp:** Phương pháp kết hợp tìm kiếm theo kinh nghiệm và biểu diễn MaxSAT cho bài toán định tuyến xe có ràng buộc trọng tải.  
 > **Trường:** Đại học Công nghệ, Đại học Quốc gia Hà Nội (VNU-UET)  
@@ -8,70 +8,50 @@ Hệ thống tối ưu hóa lai (Hybrid Optimization Framework) chuyên dụng �
 
 ---
 
-# ✨ Các tính năng nổi bật (Key Features)
+# Các tính năng chính
 
-- **Khởi tạo & Tiền xử lý Đa tầng:**  
-  Tích hợp thuật toán Clarke-Wright mở rộng cùng 4 chiến lược thu gọn tuyến đường (Relocate/Merge, Dissolve, BFD Bin Packing, Sweep) nhằm thiết lập cấu trúc luồng hợp lệ ban đầu.
-
-- **Kiến trúc Tìm kiếm Kinh nghiệm:**  
-  Khám phá không gian bằng Adaptive Large Neighborhood Search (ALNS) và Guided Local Search (GLS) với các toán tử liên tuyến tinh vi (Cross-Exchange, Relocate, Or-Opt).
-
-- **Hậu tối ưu bằng MaxSAT Tăng dần:**  
-  Trích xuất tự động các cặp tuyến lân cận ($K=2$) và mã hóa thành bài toán logic mệnh đề. Sử dụng bộ giải **RC2 (PySAT)** để tìm nghiệm cực tiểu.
-
-- **Sinh mệnh đề lười (Lazy Clause Generation):**  
-  Triệt tiêu hiện tượng cạn kiệt bộ nhớ (OOM) bằng cách cấp phát động các ràng buộc khử chu trình con (DFJ) và cắt trọng tải khi phát hiện vi phạm.
-
-- **Mô hình MILP Đối chứng (Baselines):**  
-  Cài đặt sẵn mô hình 3-chỉ số với bất phương trình Miller-Tucker-Zemlin (MTZ) để đánh giá hiệu năng chéo bằng bộ giải thương mại **Gurobi** và **IBM CPLEX**.
-
+-- #
 ---
 
-# 📂 Cấu trúc thư mục (Project Structure)
-
+# Cấu trúc thư mục (Project Structure)
 ```text
 CVRP_AdvancedCW/
-├── classes/                     # Lõi thuật toán Metaheuristic (ALNS, GLS, 2-opt, Cross-Exchange...)
+├── classes/                     # Chứa các thuật toán Metaheuristic (ALNS, GLS, 2-opt, Cross-Exchange...)
 ├── instances/                   # Các bộ dữ liệu chuẩn từ CVRPLIB (A, B, E, F, P, X)
-├── logs/                        # Tệp nhật ký (log) cho từng thuật toán (pysat/, gurobi/, cplex/)
+├── logs/                        # Log cho từng thuật toán (pysat/, gurobi/, cplex/)
 ├── results/
-│   ├── benchmark_*.csv          # Bảng số liệu thống kê tổng hợp (Cost, Gap, Time)
-│   ├── detailed_routes/         # [MỚI] Lộ trình chi tiết từng xe định dạng chuẩn *.sol
-│   ├── figures/                 # Các biểu đồ trực quan hóa (Boxplot, Bar chart) sinh tự động
-│   └── ...
-├── advanced_optimizer_pysat.py  # Pipeline lai: CW -> ALNS -> Trích xuất cặp -> Incremental MaxSAT
-├── advanced_optimizer_gurobi.py # Pipeline đối chứng: CW -> Gurobi MILP (MTZ)
-├── advanced_optimizer_cplex.py  # Pipeline đối chứng: CW -> CPLEX MILP (MTZ)
-├── run_benchmark_X.py           # Script chạy thực nghiệm hàng loạt cho bộ dữ liệu X (SOTA)
+│   ├── benchmark_*.csv          # Bảng benchmark
+├── advanced_optimizer_pysat.py  # Phương pháp đề xuất
+├── advanced_optimizer_gurobi.py # Phương pháp đối chứng: CW -> Gurobi MILP (MTZ)
+├── advanced_optimizer_cplex.py  # Phương pháp đối chứng: CW -> CPLEX MILP (MTZ)
+├── run_benchmark_X.py           # Script chạy thực nghiệm hàng loạt cho bộ dữ liệu X 
 ├── generate_summary_charts.py   # Script tự động đọc CSV và xuất biểu đồ LaTeX/PDF
 └── requirements.txt             # Danh sách thư viện Python
 
-⚙️ Cài đặt (Installation)
+```
+# Cài đặt
 1. Yêu cầu hệ thống
 Python 3.10+
 Hệ điều hành:
 Linux/Ubuntu (Khuyến nghị)
-Windows/macOS
 2. Cài đặt thư viện
-git clone https://github.com/nguyenthanhhuy-dev/cvrp_pedroclone.git
-cd cvrp_pedroclone/CVRP_AdvancedCW
-
 pip install -r requirements.txt
-Các thư viện chính
+
+- Các thư viện chính
 python-sat
 numpy
 pandas
 matplotlib
 seaborn
 networkx
-3. Bản quyền bộ giải thương mại (Tùy chọn)
+3. Bản quyền bộ giải thương mại
 
-Để chạy các mô hình đối chứng (Baseline), hệ thống yêu cầu cài đặt và kích hoạt bản quyền tương ứng:
+Để chạy các mô hình đối chứng, hệ thống yêu cầu cài đặt và kích hoạt bản quyền tương ứng:
 
 Gurobi Optimizer
-Hỗ trợ giấy phép Academic/Student
-IBM ILOG CPLEX Optimization Studio
-🚀 Hướng dẫn sử dụng (Usage)
+- Hỗ trợ giấy phép Academic/Student
+- IBM ILOG CPLEX Optimization Studio
+
 
 Hệ thống cung cấp các script run_benchmark_*.py để tự động hóa hoàn toàn quá trình thực nghiệm và ghi nhận kết quả.
 
@@ -82,7 +62,7 @@ Bạn có thể khởi chạy bộ dữ liệu mong muốn và chỉ định ph�
 pysat (Mặc định)
 gurobi
 cplex
-Ví dụ
+- Ví dụ
 # Chạy kiến trúc lai MaxSAT đề xuất trên bộ dữ liệu X
 python run_benchmark_X.py pysat
 
@@ -99,7 +79,7 @@ Sau khi quá trình thực nghiệm hoàn tất, sử dụng script phân tích 
 cd results
 
 python generate_summary_charts.py
-📊 Kết quả đầu ra (Outputs)
+# Kết quả đầu ra (Outputs)
 
 Toàn bộ quá trình đánh giá được lưu vết minh bạch tại thư mục results/.
 
@@ -132,25 +112,20 @@ Lịch sử sinh mệnh đề lười (Lazy Clauses)
 Số lần phá vỡ cực tiểu địa phương
 Thời gian CPU cấp phát
 Quá trình tìm kiếm và hậu tối ưu
-🧠 Kiến trúc Hybrid tổng quát
-Clarke-Wright Initialization
-            ↓
-Route Reduction Heuristics
-            ↓
-ALNS + GLS Metaheuristic Search
-            ↓
-K-Route Extraction (K = 2)
-            ↓
-Incremental MaxSAT Encoding
-            ↓
-RC2 Optimization (PySAT)
-            ↓
-Lazy DFJ & Capacity Cuts
-            ↓
-Final CVRP Solution
-📚 Bộ dữ liệu thực nghiệm
+# Kiến trúc Hybrid tổng quát
 
-Hệ thống hỗ trợ trực tiếp các benchmark chuẩn từ CVRPLIB:
+Clarke-Wright Initialization
+
+Route Reduction Heuristics
+ALNS + GLS Metaheuristic Search
+K-Route Extraction (K = 2)
+Incremental MaxSAT Encoding
+RC2 Optimization (PySAT)
+Lazy DFJ & Capacity Cuts
+Final CVRP Solution
+# Bộ dữ liệu thực nghiệm
+
+Hệ thống hỗ trợ benchmark từ CVRPLIB:
 
 A
 B
@@ -159,12 +134,7 @@ F
 P
 X
 
-Đặc biệt tối ưu cho:
-
-Các instance lớn
-Các instance khó thuộc nhóm X
-Các trường hợp có không gian nghiệm cực lớn
-🏆 Mục tiêu nghiên cứu
+# Mục tiêu nghiên cứu
 
 Dự án hướng tới xây dựng một kiến trúc lai có khả năng:
 
@@ -175,18 +145,3 @@ Kết hợp hiệu quả giữa:
 Metaheuristic
 SAT/MaxSAT
 Mathematical Optimization
-📄 Giấy phép (License)
-
-Dự án phục vụ mục đích:
-
-Nghiên cứu học thuật
-Khóa luận tốt nghiệp
-Thực nghiệm tối ưu hóa tổ hợp
-
-Vui lòng trích dẫn tác giả nếu sử dụng hoặc phát triển lại mã nguồn.
-
-📬 Liên hệ
-
-Nguyễn Thành Huy
-Sinh viên ngành Công nghệ Thông tin
-Trường Đại học Công nghệ - ĐHQGHN (VNU-UET)
