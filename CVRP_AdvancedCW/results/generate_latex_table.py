@@ -5,7 +5,7 @@ import os
 # =========================================================
 # CHỈ CẦN THAY ĐỔI BIẾN NÀY ĐỂ RENDER BẢNG CHO BỘ DỮ LIỆU KHÁC
 # (Ví dụ: 'A', 'B', 'E', 'P', 'X')
-TARGET_SET = 'E'  
+TARGET_SET = 'F'  
 # =========================================================
 
 def format_val(val, is_gap=False, is_pysat=False):

@@ -171,14 +171,19 @@ def generate_summary_and_charts(dataset_name):
 
         avg_time = df_final.loc[feasible_mask, f"Time_{m}"].mean()
 
+        
         summary_data.append(
             {
-                "Phương pháp": "Ferreira" if m == "Fer" else m,
-                "Số nghiệm hợp lệ": feasible,
-                "Nghiệm tối ưu": optimal,
-                "Thất bại / OOM": failed,
+                "Phương pháp": (
+                    "Phương pháp đề xuất"
+                    if m == "PySAT"
+                    else "Ferreira" if m == "Fer" else m
+                ),
+                "Số nghiệm khả thi": feasible,
+                "Số nghiệm tối ưu": optimal,
+                "Số bài không giải được": failed,
                 "Gap trung bình (%)": round(avg_gap, 2),
-                "Thời gian TB (s)": round(avg_time, 2),
+                "Thời gian trung bình (s)": round(avg_time, 2),
             }
         )
 
@@ -194,21 +199,26 @@ def generate_summary_and_charts(dataset_name):
 
     latex_summary += "\\begin{table}[H]\n"
     latex_summary += "\\centering\n"
+    latex_summary += "\\small\n\n"
 
-    latex_summary += f"\\caption{{Thống kê tổng hợp trên bộ dữ liệu {dataset_name}}}\n"
+    latex_summary += (
+        f"\\caption{{Kết quả tổng hợp thực nghiệm trên bộ dữ liệu {dataset_name}}}\n"
+    )
 
-    latex_summary += f"\\label{{tab:summary_{dataset_name.lower()}}}\n"
+    latex_summary += f"\\label{{tab:summary_{dataset_name.lower()}}}\n\n"
+
+    latex_summary += "\\resizebox{\\textwidth}{!}{%\n"
 
     latex_summary += "\\begin{tabular}{lccccc}\n"
     latex_summary += "\\toprule\n"
 
     latex_summary += (
         "\\textbf{Phương pháp} & "
-        "\\textbf{Nghiệm hợp lệ} & "
-        "\\textbf{Nghiệm tối ưu} & "
-        "\\textbf{Thất bại/OOM} & "
-        "\\textbf{Gap TB (\\%)} & "
-        "\\textbf{Time TB (s)} \\\\\n"
+        "\\textbf{Số nghiệm khả thi} & "
+        "\\textbf{Số nghiệm tối ưu} & "
+        "\\textbf{Số bài không giải được} & "
+        "\\textbf{Gap trung bình (\\%)} & "
+        "\\textbf{Thời gian trung bình (s)} \\\\\n"
     )
 
     latex_summary += "\\midrule\n"
@@ -217,22 +227,23 @@ def generate_summary_and_charts(dataset_name):
 
         latex_summary += (
             f"{row['Phương pháp']} & "
-            f"{row['Số nghiệm hợp lệ']} & "
-            f"{row['Nghiệm tối ưu']} & "
-            f"{row['Thất bại / OOM']} & "
+            f"{row['Số nghiệm khả thi']} & "
+            f"{row['Số nghiệm tối ưu']} & "
+            f"{row['Số bài không giải được']} & "
             f"{row['Gap trung bình (%)']} & "
-            f"{row['Thời gian TB (s)']} \\\\\n"
+            f"{row['Thời gian trung bình (s)']} \\\\\n"
         )
 
     latex_summary += "\\bottomrule\n"
-    latex_summary += "\\end{tabular}\n"
+    latex_summary += "\\end{tabular}%\n"
+    latex_summary += "}\n\n"
 
     latex_summary += (
         "\\vspace{0.2cm}\n"
         "\\footnotesize{"
-        "OOM: vượt quá bộ nhớ; "
-        "CW\\_UNSAT: Clarke-Wright không sinh được nghiệm khả thi; "
-        "INFEASIBLE: không tìm được nghiệm thoả mãn ràng buộc."
+        "OOM: vượt quá giới hạn bộ nhớ; "
+        "CW\\_UNSAT: thuật toán Clarke--Wright không sinh được nghiệm khả thi; "
+        "INFEASIBLE: không tìm được nghiệm thoả mãn các ràng buộc bài toán."
         "}\n"
     )
 
@@ -252,11 +263,11 @@ def generate_summary_and_charts(dataset_name):
     x = np.arange(len(df_summary))
     width = 0.25
 
-    ax.bar(x - width, df_summary["Nghiệm tối ưu"], width, label="Nghiệm tối ưu")
+    ax.bar(x - width, df_summary["Số nghiệm tối ưu"], width, label="Nghiệm tối ưu")
 
-    ax.bar(x, df_summary["Số nghiệm hợp lệ"], width, label="Nghiệm hợp lệ")
+    ax.bar(x, df_summary["Số nghiệm khả thi"], width, label="Nghiệm khả thi")
 
-    ax.bar(x + width, df_summary["Thất bại / OOM"], width, label="Thất bại / OOM")
+    ax.bar(x + width, df_summary["Số bài không giải được"], width, label="Không giải được")
 
     ax.set_xticks(x)
     ax.set_xticklabels(df_summary["Phương pháp"])
@@ -284,7 +295,7 @@ def generate_summary_and_charts(dataset_name):
             "Ferreira": df_final["Gap_Fer"],
             "CPLEX": df_final["Gap_CPLEX"],
             "Gurobi": df_final["Gap_Gurobi"],
-            "PySAT": df_final["Gap_PySAT"],
+            "Phương pháp đề xuất": df_final["Gap_PySAT"],
         }
     )
 
@@ -310,7 +321,274 @@ def generate_summary_and_charts(dataset_name):
     plt.close()
 
     print("Hoàn tất sinh biểu đồ.")
+    return df_summary
+
+# ==========================================
+# TẠO BẢNG TỔNG HỢP CHUNG
+# ==========================================
+def generate_overall_summary_table(all_summaries):
+
+    methods = [
+        "Ferreira",
+        "CPLEX",
+        "Gurobi",
+        "Phương pháp đề xuất",
+    ]
+
+    datasets = ["A", "B", "E", "F", "P", "X"]
+
+    latex = ""
+
+    latex += "\\begin{table*}[t]\n"
+    latex += "\\centering\n"
+    latex += "\\small\n\n"
+
+    latex += (
+        "\\caption{Tổng hợp kết quả thực nghiệm "
+        "trên các bộ dữ liệu benchmark}\n"
+    )
+
+    latex += "\\label{tab:overall_summary}\n\n"
+
+    latex += "\\resizebox{\\textwidth}{!}{%\n"
+
+    # ======================================
+    # HEADER
+    # ======================================
+
+    latex += "\\begin{tabular}{l"
+
+    for _ in datasets:
+        latex += "ccc|"
+
+    latex = latex[:-1]  # bỏ dấu | cuối
+
+    latex += "}\n"
+
+    latex += "\\toprule\n"
+
+    # Dataset header
+    latex += "& "
+
+    for i, d in enumerate(datasets):
+
+        if i < len(datasets) - 1:
+            latex += (
+                f"\\multicolumn{{3}}{{c|}}{{\\textbf{{{d}}}}} & "
+            )
+        else:
+            latex += (
+                f"\\multicolumn{{3}}{{c}}{{\\textbf{{{d}}}}}"
+            )
+
+    latex += " \\\\\n"
+
+    # cmidrule
+    start = 2
+
+    for i in range(len(datasets)):
+
+        end = start + 2
+
+        latex += f"\\cmidrule(lr){{{start}-{end}}}\n"
+
+        start += 3
+
+    # metric header
+    latex += "\\textbf{Phương pháp} "
+
+    for _ in datasets:
+        latex += (
+            "& Opt & Gap & Time "
+        )
+
+    latex += "\\\\\\n"
+
+    latex += "\\midrule\n"
+
+    # ======================================
+    # BODY
+    # ======================================
+
+    for method in methods:
+
+        latex += method
+
+        for dataset in datasets:
+
+            df = all_summaries[dataset]
+
+            row = df[df["Phương pháp"] == method].iloc[0]
+
+            opt = row["Số nghiệm tối ưu"]
+            gap = row["Gap trung bình (%)"]
+            time = row["Thời gian trung bình (s)"]
+
+            latex += (
+                f" & {opt}"
+                f" & {gap:.2f}"
+                f" & {time:.0f}"
+            )
+
+        latex += " \\\\\n"
+
+    latex += "\\bottomrule\n"
+    latex += "\\end{tabular}%\n"
+    latex += "}\n\n"
+
+    latex += (
+        "\\vspace{0.2cm}\n"
+        "\\footnotesize{"
+        "Opt: số lượng nghiệm tối ưu tìm được; "
+        "Gap: độ lệch trung bình so với cận tốt nhất (\\%); "
+        "Time: thời gian giải trung bình (giây); "
+        "OOM: vượt quá giới hạn bộ nhớ; "
+        "CW\\_UNSAT: thuật toán Clarke--Wright không sinh được nghiệm khả thi; "
+        "INFEASIBLE: không tìm được nghiệm thoả mãn các ràng buộc bài toán."
+        "}\n"
+    )
+
+    latex += "\\end{table*}\n"
+
+    # ======================================
+    # WRITE FILE
+    # ======================================
+
+    with open(
+        f"{FIGURES_DIR}/overall_summary_table.tex",
+        "w",
+        encoding="utf-8",
+    ) as f:
+
+        f.write(latex)
+
+    print("Đã sinh bảng tổng hợp overall_summary_table.tex")
+    
+# ==========================================
+# BIỂU ĐỒ TỔNG HỢP OVERALL SUMMARY
+# ==========================================
+def generate_overall_summary_charts(all_summaries):
+
+    datasets = ["A", "B", "E", "F", "P", "X"]
+
+    methods = [
+        "Ferreira",
+        "CPLEX",
+        "Gurobi",
+        "Phương pháp đề xuất",
+    ]
+
+    # ======================================
+    # CHUẨN BỊ DỮ LIỆU
+    # ======================================
+
+    opt_data = {m: [] for m in methods}
+    gap_data = {m: [] for m in methods}
+    time_data = {m: [] for m in methods}
+
+    for dataset in datasets:
+
+        df = all_summaries[dataset]
+
+        for method in methods:
+
+            row = df[df["Phương pháp"] == method].iloc[0]
+
+            opt_data[method].append(
+                row["Số nghiệm tối ưu"]
+            )
+
+            gap_data[method].append(
+                row["Gap trung bình (%)"]
+            )
+
+            time_data[method].append(
+                row["Thời gian trung bình (s)"]
+            )
+
+    # ======================================
+    # HÀM VẼ CHUNG
+    # ======================================
+
+    def grouped_bar_chart(data_dict, ylabel, title, filename):
+
+        x = np.arange(len(datasets))
+
+        width = 0.2
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        offsets = [-1.5, -0.5, 0.5, 1.5]
+
+        for i, method in enumerate(methods):
+
+            ax.bar(
+                x + offsets[i] * width,
+                data_dict[method],
+                width,
+                label=method,
+            )
+
+        ax.set_xticks(x)
+
+        ax.set_xticklabels(datasets)
+
+        ax.set_ylabel(ylabel)
+
+        ax.set_title(title)
+
+        ax.legend()
+
+        ax.grid(axis="y", linestyle="--", alpha=0.5)
+
+        plt.tight_layout()
+
+        plt.savefig(
+            f"{FIGURES_DIR}/{filename}.pdf"
+        )
+
+        plt.close()
+
+    # ======================================
+    # VẼ CÁC BIỂU ĐỒ
+    # ======================================
+
+    grouped_bar_chart(
+        opt_data,
+        "Số nghiệm tối ưu",
+        "So sánh số nghiệm tối ưu",
+        "overall_optimal_comparison",
+    )
+
+    grouped_bar_chart(
+        gap_data,
+        "Gap trung bình (%)",
+        "So sánh Gap trung bình",
+        "overall_gap_comparison",
+    )
+
+    grouped_bar_chart(
+        time_data,
+        "Thời gian trung bình (s)",
+        "So sánh thời gian giải trung bình",
+        "overall_time_comparison",
+    )
+
+    print("Đã sinh biểu đồ tổng hợp overall summary.")
 
 
 if __name__ == "__main__":
-    generate_summary_and_charts(TARGET_SET)
+
+    datasets = ["A", "B", "E", "F", "P", "X"]
+
+    all_summaries = {}
+
+    for dataset in datasets:
+
+        df_summary = generate_summary_and_charts(dataset)
+
+        all_summaries[dataset] = df_summary
+
+    generate_overall_summary_table(all_summaries)
+
+    generate_overall_summary_charts(all_summaries)

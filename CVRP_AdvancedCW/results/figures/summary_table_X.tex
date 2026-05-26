@@ -1,17 +1,23 @@
 \begin{table}[H]
 \centering
-\caption{Thống kê tổng hợp trên bộ dữ liệu X}
+\small
+
+\caption{Kết quả tổng hợp thực nghiệm trên bộ dữ liệu X}
 \label{tab:summary_x}
+
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{lccccc}
 \toprule
-\textbf{Phương pháp} & \textbf{Nghiệm hợp lệ} & \textbf{Nghiệm tối ưu} & \textbf{Thất bại/OOM} & \textbf{Gap TB (\%)} & \textbf{Time TB (s)} \\
+\textbf{Phương pháp} & \textbf{Số nghiệm khả thi} & \textbf{Số nghiệm tối ưu} & \textbf{Số bài không giải được} & \textbf{Gap trung bình (\%)} & \textbf{Thời gian trung bình (s)} \\
 \midrule
 Ferreira & 9 & 0 & 90 & 84.42 & 1091.03 \\
 CPLEX & 98 & 0 & 1 & 46.77 & 1188.24 \\
 Gurobi & 88 & 0 & 11 & 42.66 & 1060.33 \\
-PySAT & 98 & 0 & 1 & 9.75 & 1253.87 \\
+Phương pháp đề xuất & 98 & 0 & 1 & 9.75 & 1253.87 \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
+
 \vspace{0.2cm}
-\footnotesize{OOM: vượt quá bộ nhớ; CW\_UNSAT: Clarke-Wright không sinh được nghiệm khả thi; INFEASIBLE: không tìm được nghiệm thoả mãn ràng buộc.}
+\footnotesize{OOM: vượt quá giới hạn bộ nhớ; CW\_UNSAT: thuật toán Clarke--Wright không sinh được nghiệm khả thi; INFEASIBLE: không tìm được nghiệm thoả mãn các ràng buộc bài toán.}
 \end{table}

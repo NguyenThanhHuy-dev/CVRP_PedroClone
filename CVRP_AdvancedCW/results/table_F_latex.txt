@@ -1,0 +1,20 @@
+% Cần thêm các package: \usepackage{booktabs}, \usepackage{multirow}, \usepackage{graphicx}
+
+\begin{table}[htbp]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{l c | r r r | r r r | r r r | r r r}
+\toprule
+\multirow{2}{*}{\textbf{Instance}} & \multirow{2}{*}{\textbf{BKS}} & \multicolumn{3}{c|}{\textbf{Ferreira et al.}} & \multicolumn{3}{c|}{\textbf{CPLEX}} & \multicolumn{3}{c|}{\textbf{Gurobi}} & \multicolumn{3}{c}{\textbf{PySAT (Đề xuất)}} \\
+\cmidrule(lr){3-5} \cmidrule(lr){6-8} \cmidrule(lr){9-11} \cmidrule(lr){12-14}
+ & & Cost & Gap(\%) & Time(s) & Cost & Gap(\%) & Time(s) & Cost & Gap(\%) & Time(s) & Cost & Gap(\%) & Time(s) \\
+\midrule
+F-n135-k7 & 1162.00 & \multicolumn{3}{c|}{CW\_UNSAT} & 1269.00 & 9.21 & 744.12 & 1269.00 & 9.21 & 666.88 & 1183.00 & 1.81 & 1200.08 \\
+F-n45-k4 & 724.00 & 1167.00 & 61.19 & 1200.23 & 728.00 & 0.55 & 1198.16 & 728.00 & 0.55 & 1198.19 & 724.00 & \textbf{0.00} & 43.89 \\
+F-n72-k4 & 237.00 & \multicolumn{3}{c|}{CW\_UNSAT} & 283.00 & 19.41 & 203.75 & 279.00 & 17.72 & 492.13 & 237.00 & \textbf{0.00} & 514.09 \\
+\bottomrule
+\end{tabular}
+}
+\caption{So sánh chất lượng nghiệm và thời gian giải trên bộ dữ liệu F}
+\label{tab:benchmark_F}
+\end{table}
