@@ -59,13 +59,13 @@ pysat (Mặc định)
 gurobi
 cplex
 - Ví dụ
-# Chạy kiến trúc lai MaxSAT đề xuất trên bộ dữ liệu X
+### Chạy kiến trúc lai MaxSAT đề xuất trên bộ dữ liệu X
 python run_benchmark_X.py pysat
 
-# Chạy mô hình đối chứng MILP Gurobi trên bộ dữ liệu P
+### Chạy mô hình đối chứng MILP Gurobi trên bộ dữ liệu P
 python run_benchmark_P.py gurobi
 
-# Chạy mô hình đối chứng MILP CPLEX trên bộ dữ liệu A
+### Chạy mô hình đối chứng MILP CPLEX trên bộ dữ liệu A
 python run_benchmark_A.py cplex
 
 # Kết quả đầu ra
