@@ -3,14 +3,10 @@
 > **Khóa luận Tốt nghiệp:** Phương pháp kết hợp tìm kiếm theo kinh nghiệm và biểu diễn MaxSAT cho bài toán định tuyến xe có ràng buộc trọng tải.  
 > **Trường:** Đại học Công nghệ, Đại học Quốc gia Hà Nội (VNU-UET)  
 > **Tác giả:** Nguyễn Thành Huy  
-
-Hệ thống tối ưu hóa lai (Hybrid Optimization Framework) chuyên dụng để giải quyết Bài toán định tuyến xe có ràng buộc trọng tải (CVRP) trên các đồ thị quy mô lớn. Khung kiến trúc tích hợp khả năng khám phá không gian rộng lớn của thuật toán **Metaheuristic (ALNS + GLS)** và năng lực bảo chứng toán học khắt khe của bộ giải **Incremental MaxSAT**, đồng thời cung cấp các mô hình đối chứng chuẩn mực bằng **MILP (Gurobi & CPLEX)**.
-
 ---
 
 # Các tính năng chính
 
--- #
 ---
 
 # Cấu trúc thư mục (Project Structure)
@@ -71,15 +67,8 @@ python run_benchmark_P.py gurobi
 
 # Chạy mô hình đối chứng MILP CPLEX trên bộ dữ liệu A
 python run_benchmark_A.py cplex
-Sinh báo cáo và biểu đồ tự động
 
-Sau khi quá trình thực nghiệm hoàn tất, sử dụng script phân tích để gộp dữ liệu từ các bộ giải và xuất ra biểu đồ chuẩn học thuật (Boxplot, Bar Chart).
-
-# Nạp dữ liệu bộ X và vẽ biểu đồ vào thư mục results/figures/
-cd results
-
-python generate_summary_charts.py
-# Kết quả đầu ra (Outputs)
+# Kết quả đầu ra
 
 Toàn bộ quá trình đánh giá được lưu vết minh bạch tại thư mục results/.
 
@@ -94,21 +83,12 @@ Thời gian thực thi (Time)
 
 cho từng bài toán thực nghiệm.
 
-2. Lộ trình chi tiết
-detailed_routes/<method>/*.sol
-
-Lưu trữ lộ trình cụ thể của từng xe vận hành dưới định dạng chuẩn .sol.
-
-Định dạng này tương thích hoàn toàn với:
-
-Validator chuẩn của CVRPLIB
-Các công cụ trực quan hóa tuyến đường CVRP
-3. Nhật ký hệ thống
+2. Nhật ký hệ thống
 logs/<method>/*.log
 
 Ghi nhận chi tiết:
 
-Lịch sử sinh mệnh đề lười (Lazy Clauses)
+Lịch sử sinh mệnh đề lười
 Số lần phá vỡ cực tiểu địa phương
 Thời gian CPU cấp phát
 Quá trình tìm kiếm và hậu tối ưu
@@ -116,13 +96,13 @@ Quá trình tìm kiếm và hậu tối ưu
 
 Clarke-Wright Initialization
 
-Route Reduction Heuristics
-ALNS + GLS Metaheuristic Search
-K-Route Extraction (K = 2)
-Incremental MaxSAT Encoding
-RC2 Optimization (PySAT)
-Lazy DFJ & Capacity Cuts
-Final CVRP Solution
+-> Route Reduction Heuristics
+-> ALNS + GLS Metaheuristic Search
+-> K-Route Extraction (K = 2)
+-> Incremental MaxSAT Encoding
+-> RC2 Optimization (PySAT)
+-> Lazy DFJ & Capacity Cuts
+-> Final CVRP Solution
 # Bộ dữ liệu thực nghiệm
 
 Hệ thống hỗ trợ benchmark từ CVRPLIB:
@@ -138,10 +118,11 @@ X
 
 Dự án hướng tới xây dựng một kiến trúc lai có khả năng:
 
-Mở rộng trên các bài toán CVRP quy mô lớn
-Giảm chi phí tuyến đường so với heuristic truyền thống
-Khai thác ưu thế của suy luận logic MaxSAT
-Kết hợp hiệu quả giữa:
-Metaheuristic
-SAT/MaxSAT
-Mathematical Optimization
+- Mở rộng trên các bài toán CVRP quy mô lớn
+- Giảm chi phí tuyến đường so với heuristic truyền thống
+
+- Khai thác ưu thế của suy luận logic MaxSAT
+
+- Kết hợp hiệu quả giữa:
+-   Metaheuristic
+-   SAT/MaxSAT
