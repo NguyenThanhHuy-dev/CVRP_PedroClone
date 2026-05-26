@@ -1,19 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: UTF-8 -*-
-"""
-Advanced CVRP Optimizer – CPLEX MIP
-=====================================
-Nghiệm khởi tạo: Clarke-Wright.
-Tối ưu hóa: Single-Route MIP (TSP) và Pairwise MIP (2-vehicle VRP) bằng CPLEX.
-
-Cấu trúc chính xác theo Phase 4 của bản MaxSAT:
-  - Bước 4.1: Single route – duyệt toàn bộ, bão hòa rồi mới sang bước tiếp.
-  - Bước 4.2: Pairwise – vòng lặp cho đến khi không cải thiện hoặc hết timeout.
-              Mỗi khi tìm được cải thiện → break, tính lại danh sách cặp, lặp lại.
-
-Global timeout bắt buộc: 1200 giây.
-"""
-
 import sys
 import os
 import time
@@ -322,7 +306,6 @@ def solve_advanced(
 
     if config is None:
         config = {}
-    # Bắt buộc global_timeout = 1200s
     config.setdefault("global_timeout", GLOBAL_TIMEOUT_DEFAULT)
 
     logging.info("=" * 70)
@@ -331,7 +314,6 @@ def solve_advanced(
 
     cvrp = Instance(filepath)
     cvrp.load()
-    # cvrp.distances = np.floor(cvrp.distances + 0.5).astype(int)
     n_vehicles = int(re.search(r"-k(\d+)", filepath).group(1))
 
     logging.info(
@@ -340,14 +322,11 @@ def solve_advanced(
 
     logging.info("--- Step 1: Clarke-Wright Heuristic ---")
     try:
-        # Thực hiện khởi tạo với đúng số lượng xe n_vehicles (Hard Constraint)
         cw_time, cw_routes = ClarkeWright.run(cvrp, n_vehicles)
     except Exception as e:
-        # TRƯỜNG HỢP UNSAT: Ngắt pipeline ngay lập tức nếu không tìm được nghiệm khả thi
         logging.error(f"❌ CW THẤT BẠI (UNSAT): Không thể đóng gói vào đúng K={n_vehicles} xe.")
         logging.error(f"Chi tiết: {str(e)}")
         
-        # Trả về kết quả rỗng và trạng thái UNSAT để đồng bộ với Benchmark
         stats = {
             "solver_name": SOLVER_NAME if 'SOLVER_NAME' in locals() else "MIP-Solver",
             "single_imp_count": 0,
@@ -359,7 +338,6 @@ def solve_advanced(
         }
         return {}, float('inf'), stats
 
-    # THỐNG NHẤT ĐỊNH DẠNG LOG: Sử dụng .3f để đồng bộ việc parse dữ liệu tự động
     cw_cost = sum(r.cost for r in cw_routes.values())
     logging.info(f"  Kết quả CW: Cost = {cw_cost}, Time = {cw_time:.3f}s")
     routes = {

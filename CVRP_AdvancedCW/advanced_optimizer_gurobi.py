@@ -1,19 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: UTF-8 -*-
-"""
-Advanced CVRP Optimizer – Gurobi MIP
-======================================
-Nghiệm khởi tạo: Clarke-Wright.
-Tối ưu hóa: Single-Route MIP (TSP) và Pairwise MIP (2-vehicle VRP) bằng Gurobi.
-
-Cấu trúc chính xác theo Phase 4 của bản MaxSAT:
-  - Bước 4.1: Single route – duyệt toàn bộ, bão hòa rồi mới sang bước tiếp.
-  - Bước 4.2: Pairwise – vòng lặp cho đến khi không cải thiện hoặc hết timeout.
-              Mỗi khi tìm được cải thiện → break, tính lại danh sách cặp, lặp lại.
-
-Global timeout bắt buộc: 1200 giây.
-"""
-
 import sys
 import os
 import time

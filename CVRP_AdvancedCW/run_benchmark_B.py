@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: UTF-8 -*-
-"""
-Benchmark Runner for Augerat B-Set Instances
-=============================================
-Sử dụng: python run_benchmark_B.py [METHOD]
-  METHOD: gurobi | cplex | pysat (mặc định: pysat)
-"""
-
 import os
 import sys
 import time

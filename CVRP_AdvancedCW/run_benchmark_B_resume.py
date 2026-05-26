@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: UTF-8 -*-
-"""
-Benchmark Runner for Augerat B-Set Instances (BẢN RESUME DÙNG 1 LẦN)
-=============================================
-Sử dụng: python run_benchmark_B_resume.py [METHOD]
-  METHOD: gurobi | cplex | pysat (mặc định: pysat)
-"""
-
 import os
 import sys
 import time
